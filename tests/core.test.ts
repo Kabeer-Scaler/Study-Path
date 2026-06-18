@@ -16,8 +16,9 @@ import {
   insertRemedialLesson
 } from "../src/lib/adaptive/curriculumEngine";
 import { buildDashboard } from "../src/lib/adaptive/recommendationEngine";
-import { validateCurriculumOrdering, parseAiJsonWithFallback } from "../src/lib/adaptive/validationEngine";
+import { validateCurriculumOrdering, parseAiJsonWithFallback, validateLessonContent } from "../src/lib/adaptive/validationEngine";
 import { classifyTutorResponse, generateTutorResponse } from "../src/lib/ai/AIService";
+import { buildLessonUserPrompt, normalizePreferredStyle } from "../src/lib/ai/promptBuilder";
 import { getAIProvider } from "../src/lib/ai/provider";
 import {
   assessmentQuestions,
@@ -94,6 +95,54 @@ function assertDifficultyLadder(store: DataStore, subject: string) {
     assert.deepEqual([...difficulties].sort(), [1, 2, 3]);
   }
 }
+
+test("normalizePreferredStyle maps onboarding strings to lesson modes", () => {
+  assert.equal(normalizePreferredStyle("Examples and practice"), "examples");
+  assert.equal(normalizePreferredStyle("Code walkthroughs"), "code");
+  assert.equal(normalizePreferredStyle("Visual diagrams"), "visual");
+});
+
+test("buildLessonUserPrompt includes remedial mode and misconceptions", () => {
+  const prompt = buildLessonUserPrompt({
+    subject: "DevOps",
+    conceptId: "ci-cd",
+    conceptName: "CI/CD",
+    mastery: 0.32,
+    style: "examples",
+    mode: "remedial",
+    misconceptions: ["confuses build with deploy"],
+    missedQuestions: ["What runs first in a pipeline?"]
+  });
+  assert.match(prompt, /mode:remedial/);
+  assert.match(prompt, /misconceptions:confuses build with deploy/);
+  assert.match(prompt, /missedQuestions:What runs first in a pipeline\?/);
+});
+
+test("validateLessonContent rejects thin lessons", () => {
+  const thin = {
+    title: "Test",
+    learningObjective: "Learn test",
+    explanation: "Too short.",
+    analogy: "Like building blocks.",
+    example: "Example here.",
+    codeExample: "x = 1",
+    commonMistake: "Skipping steps.",
+    practiceQuestion: { question: "Q?", answer: "A", hint: "H" },
+    quiz: [
+      {
+        questionId: "q1",
+        question: "Q1?",
+        type: "multiple_choice" as const,
+        options: ["a", "b"],
+        correctAnswer: "a",
+        explanation: "Because a."
+      }
+    ]
+  };
+  const result = validateLessonContent(thin, "variables");
+  assert.ok(result.errors.some((error) => /too short/i.test(error)));
+  assert.ok(result.errors.some((error) => /at least 3 questions/i.test(error)));
+});
 
 test("mastery score increases after a high quiz score", () => {
   assert.equal(updateLessonMastery(0.5, 90), 0.65);

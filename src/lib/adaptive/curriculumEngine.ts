@@ -159,7 +159,7 @@ export function generateCurriculumForUser(store: DataStore, user: User) {
               ? `Challenge: Prove ${concept.name} Mastery`
             : `${concept.name} in Practice`,
         content: generateLesson(concept, score, user.preferredStyle, isRemedial),
-        estimatedMinutes: Math.min(30, Math.max(12, user.dailyTimeMinutes - 5)),
+        estimatedMinutes: Math.min(25, Math.max(15, user.dailyTimeMinutes - 5)),
         orderIndex: lessonIndex,
         status: "not_started",
         masteryTarget: 0.8,

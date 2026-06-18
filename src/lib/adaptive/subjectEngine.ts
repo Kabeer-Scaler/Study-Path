@@ -1,5 +1,13 @@
 import { callLLMJson, getAIProvider } from "@/lib/ai/provider";
 import {
+  buildAssessmentQuestionUserPrompt,
+  buildSubjectDomainUserPrompt
+} from "@/lib/ai/promptBuilder";
+import {
+  ASSESSMENT_QUESTION_SYSTEM_PROMPT,
+  SUBJECT_DOMAIN_SYSTEM_PROMPT
+} from "@/lib/ai/prompts";
+import {
   DEFAULT_SUBJECT,
   assessmentQuestions as pythonQuestions,
   concepts as pythonConcepts
@@ -875,17 +883,13 @@ function normalizeGeneratedConcepts(subject: string, value: unknown): Concept[] 
 }
 
 async function generateDomainInFocusedBatches(subject: string): Promise<SubjectDomain | undefined> {
+  const guidance = subjectGuidance(subject);
   const conceptRaw = await callLLMJson({
     messages: [
-      {
-        role: "system",
-        content: "You create concise JSON concept maps for adaptive learning. Return JSON only."
-      },
+      { role: "system", content: SUBJECT_DOMAIN_SYSTEM_PROMPT },
       {
         role: "user",
-        content: `Create exactly 5 prerequisite-ordered concepts for this subject: ${subject}
-
-Subject guidance: ${subjectGuidance(subject)}
+        content: `${buildSubjectDomainUserPrompt(subject, guidance)}
 
 Return JSON only:
 {
@@ -898,12 +902,7 @@ Return JSON only:
       "prerequisites": []
     }
   ]
-}
-
-Rules:
-- Use lowercase descriptive text ids, not numbers.
-- Cover the actual subject matter, not study skills or assessment design.
-- Prerequisites must use only ids from this generated concept list.`
+}`
       }
     ],
     temperature: 0.1
@@ -917,20 +916,10 @@ Rules:
   for (const concept of concepts) {
     const questionRaw = await callLLMJson({
       messages: [
-        {
-          role: "system",
-          content:
-            "You create factual, non-generic multiple-choice questions. Return JSON only."
-        },
+        { role: "system", content: ASSESSMENT_QUESTION_SYSTEM_PROMPT },
         {
           role: "user",
-          content: `Create exactly 3 multiple-choice questions for this concept.
-
-Subject: ${subject}
-Subject guidance: ${subjectGuidance(subject)}
-Concept id: ${concept.id}
-Concept name: ${concept.name}
-Concept description: ${concept.description}
+          content: `${buildAssessmentQuestionUserPrompt(subject, guidance, concept)}
 
 Return JSON only:
 {
@@ -946,16 +935,7 @@ Return JSON only:
       "difficulty": 1
     }
   ]
-}
-
-Rules:
-- Produce one difficulty 1 recall question, one difficulty 2 application question, and one difficulty 3 reasoning or trade-off question.
-- Ask about the subject itself, not about learners, assessment systems, quizzes, diagnostics, or study strategy.
-- For software high-level design, the word "system" is allowed because it is subject matter.
-- Every question must have 4 plausible options from the same category.
-- Distractors must be realistic misconceptions, not silly or obviously unrelated.
-- Do not put the exact correct answer inside the question stem.
-- Keep stems concrete and factual.`
+}`
         }
       ],
       temperature: 0.1
@@ -972,9 +952,8 @@ Rules:
 }
 
 async function generateDomainWithLLM(subject: string): Promise<SubjectDomain | undefined> {
-  const prompt = `Create an adaptive assessment domain for this learner-selected topic: ${subject}
-
-Subject guidance: ${subjectGuidance(subject)}
+  const guidance = subjectGuidance(subject);
+  const prompt = `${buildSubjectDomainUserPrompt(subject, guidance)}
 
 Return JSON only:
 {
@@ -1002,12 +981,7 @@ Return JSON only:
 }
 
 Rules:
-- Generate exactly 5 concepts.
-- Concept ids must be lowercase descriptive text slugs, not numbers. Good: "load-balancing". Bad: "1".
 - Generate exactly 3 questions per concept: one difficulty 1, one difficulty 2, and one difficulty 3.
-- Difficulty 1 should test basic recognition, definitions, or direct identification.
-- Difficulty 2 should test application to a short concrete scenario.
-- Difficulty 3 should test reasoning, misconception detection, edge cases, or choosing the best next step.
 - Questions must be factually accurate for the topic and useful for diagnosis.
 - Use concrete facts, scenarios, examples, or common misconceptions from the topic.
 - Do not write generic meta-learning questions.
@@ -1015,7 +989,6 @@ Rules:
 - The word "system" is allowed only when it is part of the actual subject matter, such as software system design.
 - Ask about the subject itself, not about how an education app should assess the subject.
 - Do not write questions where the stem gives away the correct answer.
-- Do not include the correct answer verbatim in the question stem unless it is impossible to avoid.
 - Avoid placeholders such as "a correct core idea", "an unrelated idea", "a memorized term", or "a topic from a different subject".
 - Avoid meta-assessment wording such as "learner response", "what should the system trust", "what should the assessment do", or "what kind of practice".
 - Multiple-choice distractors must be plausible, same category as the correct answer, and not obviously silly.
@@ -1027,17 +1000,14 @@ Rules:
       messages: [
         {
           role: "system",
-          content:
-            "You create valid JSON concept maps and factual diagnostic questions for adaptive learning. Return JSON only."
+          content: `${SUBJECT_DOMAIN_SYSTEM_PROMPT}\n${ASSESSMENT_QUESTION_SYSTEM_PROMPT}`
         },
         {
           role: "user",
           content:
             attempt === 0
               ? prompt
-              : `${prompt}
-
-Your previous attempt did not pass quality validation. Regenerate with more concrete factual questions, more plausible distractors, and correct 1/2/3 difficulty coverage.`
+              : `${prompt}|retry:fix validation failures`
         }
       ],
       temperature: 0.1
