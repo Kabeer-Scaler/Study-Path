@@ -1,7 +1,7 @@
 import {
   getMasteryMap,
   getQuestionById,
-  publicQuestion
+  publicQuestionWithConcept
 } from "@/lib/adaptive/assessmentEngine";
 import { assertOwnsUser, getAuthenticatedUser } from "@/lib/auth";
 import { readStore } from "@/lib/db/store";
@@ -32,7 +32,7 @@ export async function GET(
     sessionId: session.id,
     userId: session.userId,
     status: session.status,
-    currentQuestion: question ? publicQuestion(question) : undefined,
+    currentQuestion: question ? publicQuestionWithConcept(store, question) : undefined,
     answeredCount: answers.length,
     targetQuestionCount: 10,
     maxQuestionCount: 14,
