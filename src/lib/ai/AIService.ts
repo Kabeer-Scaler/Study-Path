@@ -1,0 +1,777 @@
+import { assessmentQuestions } from "@/lib/db/seed";
+import { normalizeText } from "@/lib/db/store";
+import { validateLessonContent } from "@/lib/adaptive/validationEngine";
+import {
+  callGroqJson,
+  isLessonContent,
+  isTutorPayload
+} from "@/lib/ai/provider";
+import { SOCRATIC_TUTOR_SYSTEM_PROMPT } from "@/lib/ai/prompts";
+import type {
+  AssessmentQuestion,
+  Concept,
+  LessonContent,
+  QuestionType,
+  TutorMessage
+} from "@/lib/types";
+
+const conceptLessonCopy: Record<
+  string,
+  {
+    objective: string;
+    explanation: string;
+    analogy: string;
+    example: string;
+    codeExample: string;
+    commonMistake: string;
+    practiceQuestion: LessonContent["practiceQuestion"];
+    quiz: LessonContent["quiz"];
+  }
+> = {
+  variables: {
+    objective: "Store values in names and recognize common Python data types.",
+    explanation:
+      "A variable is a name that points to a value. Python figures out the type from the value you assign, such as a number, string, or boolean.",
+    analogy:
+      "Think of a variable like a labeled box. The label is the variable name, and the value is what you put inside.",
+    example: "name = \"Aarav\" stores text, while attempts = 3 stores a number.",
+    codeExample: "score = 10\nname = \"Aarav\"\npassed = True\nprint(name, score, passed)",
+    commonMistake:
+      "Putting quotes around a number when you want to do math with it.",
+    practiceQuestion: {
+      question: "What value is stored in points after this code?",
+      code: "points = 7",
+      answer: "7",
+      hint: "Look to the right side of the equals sign."
+    },
+    quiz: [
+      {
+        questionId: "lesson_variables_q1",
+        question: "Which line creates a string variable?",
+        type: "multiple_choice",
+        options: ["age = 12", "age = \"12\"", "age == 12", "print(age)"],
+        correctAnswer: "age = \"12\"",
+        acceptedAnswers: ["age = \"12\"", "age = '12'"],
+        explanation: "Quotes make the value text, so it is a string."
+      },
+      {
+        questionId: "lesson_variables_q2",
+        question: "What does print(x) show after x = 5?",
+        type: "short_answer",
+        correctAnswer: "5",
+        explanation: "x points to 5, so print(x) displays 5."
+      }
+    ]
+  },
+  operators: {
+    objective: "Use arithmetic, comparison, and logical operators in expressions.",
+    explanation:
+      "Operators are symbols or words that combine values. Python uses them for math, comparisons, and logic.",
+    analogy:
+      "Operators are like instructions between ingredients: add these, compare those, or check both conditions.",
+    example: "2 + 3 makes 5, while score >= 60 checks whether score is high enough.",
+    codeExample: "score = 72\npassed = score >= 60\nprint(passed)",
+    commonMistake:
+      "Using = when you mean ==. One assigns; the other compares.",
+    practiceQuestion: {
+      question: "What is the result of 4 * 2 + 1?",
+      answer: "9",
+      hint: "Multiplication happens before addition."
+    },
+    quiz: [
+      {
+        questionId: "lesson_operators_q1",
+        question: "Which operator checks equality?",
+        type: "multiple_choice",
+        options: ["=", "==", "+", "and"],
+        correctAnswer: "==",
+        explanation: "== compares two values for equality."
+      },
+      {
+        questionId: "lesson_operators_q2",
+        question: "What does 10 > 3 evaluate to?",
+        type: "short_answer",
+        correctAnswer: "True",
+        acceptedAnswers: ["true"],
+        explanation: "10 is greater than 3, so the comparison is True."
+      }
+    ]
+  },
+  conditionals: {
+    objective: "Choose which code runs by writing clear if, elif, and else branches.",
+    explanation:
+      "Conditionals let your program make decisions. Python checks a condition and runs the indented block when it is true.",
+    analogy:
+      "It is like a traffic signal: if the light is green, go; otherwise, wait.",
+    example: "Use an if statement to print a message only when a score reaches the passing mark.",
+    codeExample: "score = 75\nif score >= 60:\n    print(\"pass\")\nelse:\n    print(\"retry\")",
+    commonMistake:
+      "Forgetting the colon after the condition or forgetting indentation inside the branch.",
+    practiceQuestion: {
+      question: "Which branch runs when score is 45?",
+      code: "if score >= 60:\n    print(\"pass\")\nelse:\n    print(\"retry\")",
+      answer: "else / retry",
+      hint: "Ask whether 45 is at least 60."
+    },
+    quiz: [
+      {
+        questionId: "lesson_conditionals_q1",
+        question: "Which keyword starts a decision?",
+        type: "multiple_choice",
+        options: ["for", "if", "def", "list"],
+        correctAnswer: "if",
+        explanation: "if starts a conditional check."
+      },
+      {
+        questionId: "lesson_conditionals_q2",
+        question: "What prints when x = 2?\nif x > 3:\n    print(\"big\")\nelse:\n    print(\"small\")",
+        type: "short_answer",
+        correctAnswer: "small",
+        explanation: "2 is not greater than 3, so the else branch runs."
+      }
+    ]
+  },
+  loops: {
+    objective: "Repeat actions over a sequence using for loops and range.",
+    explanation:
+      "A loop repeats the same block of code. A for loop runs once for each item in a sequence.",
+    analogy:
+      "Think of a teacher checking homework for every student in a class.",
+    example: "for i in range(3) prints 0, then 1, then 2.",
+    codeExample: "for i in range(3):\n    print(i)",
+    commonMistake:
+      "Expecting range(3) to include 3. It stops before the ending number.",
+    practiceQuestion: {
+      question: "What values does this loop print?",
+      code: "for i in range(3):\n    print(i)",
+      answer: "0, 1, 2",
+      hint: "Python starts counting at 0 and stops before 3."
+    },
+    quiz: [
+      {
+        questionId: "lesson_loops_q1",
+        question: "What does range(2) produce?",
+        type: "multiple_choice",
+        options: ["0, 1", "1, 2", "0, 1, 2", "2 only"],
+        correctAnswer: "0, 1",
+        acceptedAnswers: ["0, 1", "0 1"],
+        explanation: "range(2) starts at 0 and stops before 2."
+      },
+      {
+        questionId: "lesson_loops_q2",
+        question: "How many times does this loop run?\nfor item in [\"a\", \"b\", \"c\"]:\n    print(item)",
+        type: "short_answer",
+        correctAnswer: "3",
+        explanation: "The list has three items, so the loop runs three times."
+      }
+    ]
+  },
+  functions: {
+    objective: "Create reusable blocks of code with parameters and return values.",
+    explanation:
+      "A function packages steps under a name. You call it when you want those steps to run.",
+    analogy:
+      "A function is like a recipe card: give it ingredients, follow the steps, and get a result.",
+    example: "A function named add can take two numbers and return their sum.",
+    codeExample: "def add(a, b):\n    return a + b\n\nprint(add(2, 3))",
+    commonMistake:
+      "Printing inside a function when the program really needs to return a value.",
+    practiceQuestion: {
+      question: "What does add(2, 3) return?",
+      code: "def add(a, b):\n    return a + b",
+      answer: "5",
+      hint: "Replace a with 2 and b with 3."
+    },
+    quiz: [
+      {
+        questionId: "lesson_functions_q1",
+        question: "Which keyword defines a function?",
+        type: "multiple_choice",
+        options: ["def", "func", "return", "if"],
+        correctAnswer: "def",
+        explanation: "Python uses def to define functions."
+      },
+      {
+        questionId: "lesson_functions_q2",
+        question: "What does return do?",
+        type: "multiple_choice",
+        options: [
+          "Stops Python forever",
+          "Sends a value back to the caller",
+          "Creates a list",
+          "Starts a loop"
+        ],
+        correctAnswer: "Sends a value back to the caller",
+        explanation: "return gives the function's result back to the code that called it."
+      }
+    ]
+  },
+  lists: {
+    objective: "Store multiple ordered values and process them with indexes and loops.",
+    explanation:
+      "A list holds several values in order. You can access items by index, append new items, and loop over the list.",
+    analogy:
+      "A list is like a numbered queue. Each item has a position.",
+    example: "colors[0] gets the first color because Python starts indexes at 0.",
+    codeExample: "colors = [\"red\", \"blue\", \"green\"]\ncolors.append(\"yellow\")\nprint(colors[0])",
+    commonMistake:
+      "Trying to access index 1 for the first item. The first index is 0.",
+    practiceQuestion: {
+      question: "What is nums[1]?",
+      code: "nums = [4, 8, 12]",
+      answer: "8",
+      hint: "Index 0 is 4, so move one position to index 1."
+    },
+    quiz: [
+      {
+        questionId: "lesson_lists_q1",
+        question: "What is the first index in a Python list?",
+        type: "multiple_choice",
+        options: ["0", "1", "-1", "first"],
+        correctAnswer: "0",
+        explanation: "Python list indexing starts at 0."
+      },
+      {
+        questionId: "lesson_lists_q2",
+        question: "Which method adds an item to the end of a list?",
+        type: "short_answer",
+        correctAnswer: "append",
+        acceptedAnswers: ["append", "append()"],
+        explanation: "append adds one item to the end."
+      }
+    ]
+  },
+  dictionaries: {
+    objective: "Use keys to store and retrieve related values in dictionaries.",
+    explanation:
+      "A dictionary stores key-value pairs. Instead of using a position number, you use a key to find the value.",
+    analogy:
+      "A dictionary is like a contact list: a name key points to a phone number value.",
+    example: "student[\"name\"] reads the value stored under the key name.",
+    codeExample: "student = {\"name\": \"Maya\", \"age\": 14}\nprint(student[\"name\"])",
+    commonMistake:
+      "Forgetting quotes around string keys, such as student[name] instead of student[\"name\"].",
+    practiceQuestion: {
+      question: "What value does student[\"age\"] return?",
+      code: "student = {\"name\": \"Maya\", \"age\": 14}",
+      answer: "14",
+      hint: "Find the value paired with the key \"age\"."
+    },
+    quiz: [
+      {
+        questionId: "lesson_dictionaries_q1",
+        question: "Which syntax creates a key-value pair?",
+        type: "multiple_choice",
+        options: ["\"age\": 12", "\"age\" = 12", "[\"age\", 12]", "age -> 12"],
+        correctAnswer: "\"age\": 12",
+        explanation: "Dictionaries use key: value pairs."
+      },
+      {
+        questionId: "lesson_dictionaries_q2",
+        question: "Which method safely reads a key that may be missing?",
+        type: "short_answer",
+        correctAnswer: "get",
+        acceptedAnswers: ["get", "get()"],
+        explanation: "dict.get(key) avoids a KeyError by returning None by default."
+      }
+    ]
+  },
+  strings: {
+    objective: "Work with text using indexes, slices, methods, and formatting.",
+    explanation:
+      "A string is text. Python lets you join strings, read characters by index, and use methods like upper or lower.",
+    analogy:
+      "A string is like a row of letter tiles; each tile has a position.",
+    example: "\"Py\" + \"thon\" becomes \"Python\".",
+    codeExample: "word = \"python\"\nprint(word[0])\nprint(word.upper())",
+    commonMistake:
+      "Forgetting that string indexes also start at 0.",
+    practiceQuestion: {
+      question: "What is word[0]?",
+      code: "word = \"cat\"",
+      answer: "c",
+      hint: "Index 0 is the first character."
+    },
+    quiz: [
+      {
+        questionId: "lesson_strings_q1",
+        question: "What does \"Py\" + \"thon\" produce?",
+        type: "short_answer",
+        correctAnswer: "Python",
+        acceptedAnswers: ["python"],
+        explanation: "The + operator joins the strings."
+      },
+      {
+        questionId: "lesson_strings_q2",
+        question: "Which method makes a string uppercase?",
+        type: "multiple_choice",
+        options: ["upper()", "big()", "capitalize_all()", "loud()"],
+        correctAnswer: "upper()",
+        acceptedAnswers: ["upper", "upper()"],
+        explanation: "upper() returns an uppercase copy of the string."
+      }
+    ]
+  },
+  debugging: {
+    objective: "Read errors and trace program state to fix small mistakes.",
+    explanation:
+      "Debugging means finding where code behavior differs from what you expected. Start by reading the error or tracing values line by line.",
+    analogy:
+      "It is like retracing steps when you lose something: go back to the last place everything made sense.",
+    example: "If a loop never stops, inspect the condition and the variable that should change.",
+    codeExample: "count = 0\nwhile count < 3:\n    print(count)\n    count = count + 1",
+    commonMistake:
+      "Changing multiple lines at once before identifying the exact failing step.",
+    practiceQuestion: {
+      question: "If a while loop runs forever, what should you inspect first?",
+      answer: "the loop condition",
+      hint: "Ask what must become false for the loop to stop."
+    },
+    quiz: [
+      {
+        questionId: "lesson_debugging_q1",
+        question: "A program runs but gives the wrong answer. What kind of bug is likely?",
+        type: "multiple_choice",
+        options: ["Logic bug", "Keyboard bug", "Color bug", "No bug"],
+        correctAnswer: "Logic bug",
+        explanation: "Logic bugs happen when the steps are valid Python but the reasoning is wrong."
+      },
+      {
+        questionId: "lesson_debugging_q2",
+        question: "What should you read first when Python shows an error?",
+        type: "multiple_choice",
+        options: ["The traceback", "The wallpaper", "The package logo", "The keyboard"],
+        correctAnswer: "The traceback",
+        explanation: "The traceback points to the line and error type."
+      }
+    ]
+  }
+};
+
+export function evaluateAnswer(
+  question: Pick<
+    AssessmentQuestion,
+    "correctAnswer" | "acceptedAnswers" | "conceptId" | "question"
+  >,
+  learnerAnswer: string
+) {
+  const normalizedLearner = normalizeText(learnerAnswer);
+  const accepted = [question.correctAnswer, ...(question.acceptedAnswers ?? [])]
+    .filter(Boolean)
+    .map((answer) => normalizeText(answer));
+
+  const compactLearner = normalizedLearner.replace(/[,\s]+/g, "");
+  const isCorrect = accepted.some((answer) => {
+    const compactAnswer = answer.replace(/[,\s]+/g, "");
+    return normalizedLearner === answer || compactLearner === compactAnswer;
+  });
+
+  const misconception = inferMisconception(question, learnerAnswer, isCorrect);
+
+  return {
+    isCorrect,
+    score: isCorrect ? 1 : 0,
+    feedback: isCorrect
+      ? "Correct. Nice reasoning."
+      : `Not quite. A good answer is ${question.correctAnswer}.`,
+    misconception
+  };
+}
+
+function inferMisconception(
+  question: Pick<AssessmentQuestion, "correctAnswer" | "conceptId" | "question">,
+  learnerAnswer: string,
+  isCorrect: boolean
+) {
+  if (isCorrect) return "";
+  const answer = normalizeText(learnerAnswer);
+  const text = normalizeText(question.question);
+
+  if (question.conceptId === "loops" && /range/.test(text) && /1.*2.*3/.test(answer)) {
+    return "Learner thinks Python ranges start from 1 instead of 0.";
+  }
+  if (
+    ["lists", "strings"].includes(question.conceptId) &&
+    /index|\[0\]|\[1\]/.test(text)
+  ) {
+    return "Learner may be confusing zero-based indexing with one-based positions.";
+  }
+  if (question.conceptId === "operators" && answer === "=") {
+    return "Learner is mixing assignment (=) with equality comparison (==).";
+  }
+  if (question.conceptId === "conditionals") {
+    return "Learner may be tracing the condition branch in the wrong order.";
+  }
+  return "The answer suggests this concept needs another pass.";
+}
+
+export function generateAssessmentQuestion(
+  conceptId: string,
+  difficulty: 1 | 2 | 3,
+  excludeIds: string[] = [],
+  questions: AssessmentQuestion[] = assessmentQuestions
+) {
+  const exact = questions.find(
+    (question) =>
+      question.conceptId === conceptId &&
+      question.difficulty === difficulty &&
+      !excludeIds.includes(question.id)
+  );
+  if (exact) return exact;
+
+  return questions.find(
+    (question) =>
+      question.conceptId === conceptId && !excludeIds.includes(question.id)
+  );
+}
+
+function isProgrammingSubject(subject: string) {
+  return /\b(python|javascript|typescript|java|c\+\+|c#|programming|coding|software|react|node|sql|html|css|algorithm|data structure)\b/i.test(
+    subject
+  );
+}
+
+function fallbackCodeExample(concept: Concept) {
+  if (!isProgrammingSubject(concept.subject)) {
+    return `No code needed: choose one example of ${concept.name}, identify the key evidence, then explain how it connects to ${concept.subject}.`;
+  }
+
+  return `# Practice prompt for ${concept.name}
+concept = "${concept.name}"
+example = "Write a tiny example that demonstrates this concept."
+print(concept, example)`;
+}
+
+export function generateLesson(
+  concept: Concept,
+  mastery: number,
+  preferredStyle: string,
+  isRemedial = false
+): LessonContent {
+  const base =
+    conceptLessonCopy[concept.id] ??
+    {
+      objective: `Understand the role of ${concept.name} in ${concept.subject}.`,
+      explanation: `${concept.name} is one part of ${concept.subject}. Focus on what it means, why it matters, and how it connects to the surrounding ideas.`,
+      analogy:
+        "Think of the topic like a map: this concept is one landmark that helps you navigate the whole area.",
+      example: `A simple example in ${concept.subject} is recognizing when ${concept.name.toLowerCase()} is being used and explaining why it matters.`,
+      codeExample: fallbackCodeExample(concept),
+      commonMistake:
+        "Memorizing a phrase without being able to explain it in your own words.",
+      practiceQuestion: {
+        question: `In your own words, what is the main purpose of ${concept.name}?`,
+        answer: `A strong answer explains the core idea of ${concept.name} and connects it to ${concept.subject}.`,
+        hint: "Start with what the concept does or explains."
+      },
+      quiz: [
+        {
+          questionId: `lesson_${concept.id}_q1`,
+          question: `Which answer best describes ${concept.name}?`,
+          type: "multiple_choice" as QuestionType,
+          options: [
+            `A core idea within ${concept.subject}`,
+            "An unrelated detail",
+            "A random memorized phrase",
+            "A topic from a different subject"
+          ],
+          correctAnswer: `A core idea within ${concept.subject}`,
+          explanation: `${concept.name} belongs to ${concept.subject}, so the best answer connects it to the subject's core ideas.`
+        },
+        {
+          questionId: `lesson_${concept.id}_q2`,
+          question: `What should you do first when studying ${concept.name}?`,
+          type: "multiple_choice" as QuestionType,
+          options: [
+            "Define the concept clearly",
+            "Skip the definition",
+            "Memorize unrelated facts",
+            "Ignore examples"
+          ],
+          correctAnswer: "Define the concept clearly",
+          explanation: "A clear definition makes examples and practice easier to reason through."
+        }
+      ]
+    };
+  const practiceFirst = /practice/i.test(preferredStyle);
+  const codeFocused = /code/i.test(preferredStyle);
+  const visual = /visual/i.test(preferredStyle);
+
+  const styleNote = practiceFirst
+    ? "Try the example first, then use the explanation to name the pattern you noticed."
+    : codeFocused
+      ? "Focus on tracing each line of the code before changing it."
+      : visual
+        ? "Picture each value moving through the steps like labels on a small flowchart."
+        : "Read the idea, trace the example, then answer the quick check.";
+
+  const lesson = {
+    title: `${isRemedial ? "Review: " : ""}${concept.name}`,
+    learningObjective: base.objective,
+    explanation:
+      mastery < 0.5
+        ? `${base.explanation} ${styleNote} We will keep this short and rebuild the idea from the first step.`
+        : `${base.explanation} ${styleNote}`,
+    analogy: base.analogy,
+    example: base.example,
+    codeExample: base.codeExample,
+    commonMistake: base.commonMistake,
+    practiceQuestion: base.practiceQuestion,
+    quiz: base.quiz.map((question) => ({
+      ...question,
+      type: question.type as QuestionType
+    }))
+  };
+
+  const validation = validateLessonContent(lesson, concept.id);
+  if (validation.valid) return lesson;
+
+  return {
+    title: `Safe Fallback: ${concept.name}`,
+    learningObjective: `Practice the core idea of ${concept.name}.`,
+    explanation:
+      "We could not validate the generated lesson safely, so this fallback keeps the content short and aligned to the selected concept.",
+    analogy: "Treat the concept like a small step you can trace one line at a time.",
+    example: base.example,
+    codeExample: base.codeExample,
+    commonMistake: base.commonMistake,
+    practiceQuestion: base.practiceQuestion,
+    quiz: base.quiz.map((question) => ({
+      ...question,
+      type: question.type as QuestionType
+    }))
+  };
+}
+
+export async function generateLessonWithProvider(
+  concept: Concept,
+  mastery: number,
+  preferredStyle: string,
+  isRemedial = false
+) {
+  const fallback = generateLesson(concept, mastery, preferredStyle, isRemedial);
+  const prompt = `Generate one short interactive lesson for a personalised learning platform.
+
+Subject: ${concept.subject}
+Concept id: ${concept.id}
+Concept name: ${concept.name}
+Learner mastery: ${mastery}
+Preferred style: ${preferredStyle}
+Remedial lesson: ${isRemedial ? "yes" : "no"}
+
+Rules:
+- Stay strictly inside this concept.
+- If the subject is programming, include a short safe code example.
+- If the subject is not programming, put a short applied scenario in codeExample and begin it with "No code needed:".
+- If code is included, do not include file system, network, shell, eval, exec, open, subprocess, os, requests, or infinite loop code.
+- Include exactly 2 quiz questions.
+- Every quiz question must have one clear correct answer.
+- Return JSON only with this shape:
+{
+  "title": "",
+  "learningObjective": "",
+  "explanation": "",
+  "analogy": "",
+  "example": "",
+  "codeExample": "",
+  "commonMistake": "",
+  "practiceQuestion": { "question": "", "code": "", "answer": "", "hint": "" },
+  "quiz": [
+    {
+      "questionId": "lesson_${concept.id}_ai_q1",
+      "question": "",
+      "type": "multiple_choice",
+      "options": [],
+      "correctAnswer": "",
+      "explanation": ""
+    }
+  ]
+}`;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const raw = await callGroqJson({
+        messages: [
+          {
+            role: "system",
+            content:
+              "You create concise, safe, valid JSON lessons for adaptive learners across any subject."
+          },
+          { role: "user", content: prompt }
+        ]
+      });
+      if (!raw) return fallback;
+      const parsed = JSON.parse(raw) as unknown;
+      if (isLessonContent(parsed)) {
+        const validation = validateLessonContent(parsed, concept.id);
+        if (validation.valid) return parsed;
+        console.warn("Invalid Groq lesson content", validation.errors);
+      } else {
+        console.warn("Groq lesson response failed schema validation.");
+      }
+    } catch (error) {
+      console.warn(
+        "Groq lesson generation failed",
+        error instanceof Error ? error.message : "unknown error"
+      );
+    }
+  }
+
+  return fallback;
+}
+
+export function classifyTutorResponse({
+  reply,
+  tutorStrategy,
+  message,
+  priorMessages,
+  concept
+}: {
+  reply: string;
+  tutorStrategy: "guiding_question" | "hint" | "explanation";
+  message: string;
+  priorMessages: TutorMessage[];
+  concept: Concept;
+}) {
+  const userTurns = priorMessages.filter((item) => item.role === "user").length;
+  const early = userTurns < 2 && !/give up|final explanation after trying/i.test(message);
+  const revealsLikelyFinalAnswer =
+    /\b0,\s*1,\s*2\b|\bthe answer is\b|\bprints 0\b/i.test(reply);
+  const asksGuidingQuestion = /\?/.test(reply);
+  const tooLong = reply.split(/\s+/).length > 95;
+  const shaming = /obvious|wrong because you|you should know|stupid/i.test(reply);
+  const ignoresConcept =
+    tutorStrategy !== "guiding_question" &&
+    tutorStrategy !== "hint" &&
+    tutorStrategy !== "explanation";
+
+  const valid =
+    !tooLong &&
+    !shaming &&
+    !ignoresConcept &&
+    !(early && tutorStrategy === "explanation") &&
+    !(early && revealsLikelyFinalAnswer) &&
+    (tutorStrategy === "explanation" || asksGuidingQuestion || reply.toLowerCase().includes(concept.name.toLowerCase().split(" ")[0]));
+
+  return {
+    valid,
+    violations: [
+      early && tutorStrategy === "explanation" ? "explains too early" : "",
+      early && revealsLikelyFinalAnswer ? "reveals final answer too early" : "",
+      tooLong ? "too long" : "",
+      shaming ? "shaming language" : "",
+      ignoresConcept ? "invalid strategy" : ""
+    ].filter(Boolean)
+  };
+}
+
+export function safeTutorFallback() {
+  return {
+    reply: "Let's work through it step by step. What do you think happens first?",
+    tutorStrategy: "guiding_question" as const
+  };
+}
+
+export function generateTutorResponse({
+  concept,
+  lessonTitle,
+  mastery,
+  message,
+  priorMessages
+}: {
+  concept: Concept;
+  lessonTitle: string;
+  mastery: number;
+  message: string;
+  priorMessages: TutorMessage[];
+}) {
+  const userTurns = priorMessages.filter((item) => item.role === "user").length;
+  const asksForFinal = /final|just tell|answer directly|give me the answer/i.test(
+    message
+  );
+  const seemsStuck = /stuck|confused|don't understand|dont understand|hint/i.test(
+    message
+  );
+
+  if (userTurns >= 2 || (/explain/i.test(message) && asksForFinal)) {
+    return {
+      reply: `Let's unpack ${lessonTitle} step by step. First name what ${concept.name.toLowerCase()} is asking you to notice, then compare the key details in the example. Which clue in the lesson supports your current answer, and which clue challenges it?`,
+      tutorStrategy: "explanation" as const
+    };
+  }
+
+  if (asksForFinal) {
+    return {
+      reply:
+        "Before I tell you directly, let's test your reasoning. What is the first clue in the question that points toward one answer and rules out another?",
+      tutorStrategy: "guiding_question" as const
+    };
+  }
+
+  if (seemsStuck || mastery < 0.45) {
+    return {
+      reply: `Small hint: focus on one line at a time. In this ${concept.name.toLowerCase()} example, which value is created or changed first?`,
+      tutorStrategy: "hint" as const
+    };
+  }
+
+  return {
+    reply: `Good question. What do you think happens first in the ${concept.name.toLowerCase()} example, and which line makes that happen?`,
+    tutorStrategy: "guiding_question" as const
+  };
+}
+
+export async function generateTutorResponseWithProvider(args: {
+  concept: Concept;
+  lessonTitle: string;
+  mastery: number;
+  message: string;
+  priorMessages: TutorMessage[];
+  misconception?: string;
+}) {
+  const fallback = generateTutorResponse(args);
+  const userTurns = args.priorMessages.filter((item) => item.role === "user").length;
+  const prompt = `Current subject: ${args.concept.subject}
+Current lesson: ${args.lessonTitle}
+Current concept: ${args.concept.name}
+Learner mastery: ${args.mastery}
+Prior learner attempts in this chat: ${userTurns}
+Known misconception: ${args.misconception ?? "none"}
+Learner message: ${args.message}
+
+Return valid JSON only:
+{
+  "reply": "",
+  "tutorStrategy": "guiding_question | hint | explanation"
+}
+
+Strict policy:
+- The first response must not reveal the final answer.
+- Ask one focused guiding question unless the learner has tried at least twice or says they give up.
+- Keep the reply under 70 words.
+- Never shame the learner.
+- Use current lesson context.`;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const raw = await callGroqJson({
+        messages: [
+          { role: "system", content: SOCRATIC_TUTOR_SYSTEM_PROMPT },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.1
+      });
+      if (!raw) return fallback;
+      const parsed = JSON.parse(raw) as unknown;
+      if (isTutorPayload(parsed)) return parsed;
+      console.warn("Groq tutor response failed schema validation.");
+    } catch (error) {
+      console.warn(
+        "Groq tutor generation failed",
+        error instanceof Error ? error.message : "unknown error"
+      );
+    }
+  }
+
+  return fallback;
+}
