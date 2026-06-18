@@ -112,6 +112,7 @@ export interface Module {
 export interface LessonContent {
   title: string;
   learningObjective: string;
+  intro?: string;
   explanation: string;
   analogy: string;
   example: string;

@@ -39,6 +39,10 @@ export async function POST(request: Request) {
             mastery,
             user.preferredStyle,
             lesson.isRemedial
+              ? { mode: "remedial" }
+              : lesson.isChallenge
+                ? { mode: "challenge" }
+                : { mode: "core" }
           );
         }
       }

@@ -173,6 +173,7 @@ export function isLessonContent(value: unknown): value is LessonContent {
   return (
     typeof item.title === "string" &&
     typeof item.learningObjective === "string" &&
+    (item.intro === undefined || typeof item.intro === "string") &&
     typeof item.explanation === "string" &&
     typeof item.analogy === "string" &&
     typeof item.example === "string" &&
