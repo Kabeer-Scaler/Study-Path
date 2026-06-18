@@ -25,19 +25,19 @@ export default async function CurriculumPage({
 
   if (!user) {
     return (
-      <main className="page-shell">
-        <div className="panel p-6">User not found.</div>
+      <main className="compact-page-shell app-page">
+        <div className="panel p-4">User not found.</div>
       </main>
     );
   }
 
   if (!bundle) {
     return (
-      <main className="page-shell">
-        <div className="panel p-8 text-center">
-          <h1 className="text-2xl font-extrabold text-ink">No curriculum found</h1>
-          <p className="mt-2 text-muted">Please complete the assessment first.</p>
-          <Link className="accent-button mx-auto mt-5 inline-flex" href="/onboarding">
+      <main className="compact-page-shell app-page">
+        <div className="panel flex flex-1 flex-col items-center justify-center p-6 text-center">
+          <h1 className="text-xl font-extrabold text-ink">No curriculum found</h1>
+          <p className="mt-1 text-sm text-muted">Please complete the assessment first.</p>
+          <Link className="accent-button mx-auto mt-4 inline-flex" href="/onboarding">
             Start assessment
           </Link>
         </div>
@@ -50,16 +50,13 @@ export default async function CurriculumPage({
     .find((lesson) => !["completed", "mastered", "skipped"].includes(lesson.status));
 
   return (
-    <main className="page-shell animate-fade-in">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <main className="compact-page-shell app-page animate-fade-in">
+      <div className="page-header-compact">
         <div>
           <span className="chip-accent">
             <Sparkles size={14} aria-hidden /> {user.subject}
           </span>
-          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
-            {bundle.curriculum.title}
-          </h1>
-          <p className="mt-2 max-w-3xl text-muted">{bundle.curriculum.generatedReason}</p>
+          <h1 className="mt-1">{bundle.curriculum.title}</h1>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link className="secondary-button" href={`/dashboard/${user.id}`}>
@@ -75,18 +72,18 @@ export default async function CurriculumPage({
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <section className="panel p-5 sm:p-6">
-          <div className="flex items-center gap-2">
-            <BookOpenCheck size={22} className="text-accent" aria-hidden />
-            <h2 className="text-xl font-bold text-ink">Learning path map</h2>
+      <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <section className="panel flex min-h-0 flex-col p-4 sm:p-5">
+          <div className="flex shrink-0 items-center gap-2">
+            <BookOpenCheck size={20} className="text-accent" aria-hidden />
+            <h2 className="text-lg font-bold text-ink">Learning path map</h2>
           </div>
-          <div className="mt-5">
+          <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
             <CurriculumMap modules={bundle.modules} />
           </div>
         </section>
 
-        <aside>
+        <aside className="flex min-h-0 flex-col overflow-hidden">
           <CurriculumLessonList modules={bundle.modules} />
         </aside>
       </div>

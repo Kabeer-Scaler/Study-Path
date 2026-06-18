@@ -39,26 +39,23 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="relative overflow-hidden">
+    <main className="app-page relative overflow-hidden">
       <div className="absolute inset-0 hero-gradient -z-20" />
       <AuroraBackground intensity="soft" />
       <NeuralOrbs count={4} />
-      <div className="page-shell">
-        <div className="mx-auto max-w-md animate-scale-in">
-          <div className="mb-6 text-center">
+      <div className="compact-page-shell flex h-full items-center justify-center">
+        <div className="mx-auto w-full max-w-md animate-scale-in">
+          <div className="mb-4 text-center">
             <span className="chip-accent mx-auto">
               <Sparkles size={14} aria-hidden /> Create account
             </span>
-            <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-ink">
+            <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-ink">
               Start your learning journey
             </h1>
-            <p className="mt-2 text-muted">
-              Your account keeps your assessment, curriculum, tutor chats, and progress separate.
-            </p>
           </div>
 
-          <form className="panel panel-hover p-6 sm:p-7" onSubmit={submit}>
-            <div className="grid gap-5">
+          <form className="panel panel-hover p-5 sm:p-6" onSubmit={submit}>
+            <div className="grid gap-4">
               <label>
                 <span className="field-label">Name</span>
                 <input
@@ -94,10 +91,10 @@ export default function RegisterPage() {
               </label>
             </div>
 
-            {error ? <p className="danger-note mt-5">{error}</p> : null}
+            {error ? <p className="danger-note mt-4">{error}</p> : null}
 
             <button
-              className="accent-button relative mt-6 w-full overflow-hidden"
+              className="accent-button relative mt-5 w-full overflow-hidden"
               disabled={loading}
               type="submit"
             >
@@ -108,7 +105,7 @@ export default function RegisterPage() {
               {loading ? <AIGeneratingDots label="creating account" /> : "Create account"}
             </button>
 
-            <p className="mt-5 text-center text-sm text-muted">
+            <p className="mt-4 text-center text-sm text-muted">
               Already registered?{" "}
               <Link className="font-semibold text-ink underline-offset-4 hover:underline" href="/login">
                 Sign in

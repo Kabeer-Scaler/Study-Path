@@ -116,29 +116,27 @@ export default function OnboardingPage() {
   }
 
   return (
-    <main className="page-shell animate-fade-in">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-8">
-          <span className="chip-accent">
-            <Sparkles size={14} aria-hidden /> Learner onboarding
-          </span>
-          <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
-            {learnerName ? (
-              <>
-                Welcome, <span className="text-gradient">{learnerName}</span>
-              </>
-            ) : (
-              <>Build your personalised learning path</>
-            )}
-          </h1>
-          <p className="mt-2 max-w-2xl text-muted">
-            These preferences shape lesson tone, pacing, and the initial mastery estimate.
-            You can change them later.
-          </p>
+    <main className="compact-page-shell app-page animate-fade-in">
+      <div className="mx-auto w-full max-w-4xl">
+        <div className="page-header-compact">
+          <div>
+            <span className="chip-accent">
+              <Sparkles size={14} aria-hidden /> Learner onboarding
+            </span>
+            <h1 className="mt-1">
+              {learnerName ? (
+                <>
+                  Welcome, <span className="text-gradient">{learnerName}</span>
+                </>
+              ) : (
+                <>Build your personalised learning path</>
+              )}
+            </h1>
+          </div>
         </div>
 
-        <form className="panel p-6 sm:p-7" onSubmit={submit}>
-          <div className="grid gap-5 md:grid-cols-2">
+        <form className="panel p-4 sm:p-5" onSubmit={submit}>
+          <div className="grid gap-3 md:grid-cols-2">
             <div className="md:col-span-2">
               <Dropdown
                 label="Target subject"
@@ -148,7 +146,7 @@ export default function OnboardingPage() {
                 onChange={(value) => update("subject", value === "__custom__" ? "" : value)}
               />
               {isCustomSubject ? (
-                <label className="mt-3 block">
+                <label className="mt-2 block">
                   <span className="field-label">Custom subject</span>
                   <input
                     className="input-field"
@@ -164,7 +162,7 @@ export default function OnboardingPage() {
             <label className="md:col-span-2">
               <span className="field-label">Learning goal</span>
               <textarea
-                className="input-field min-h-24"
+                className="input-field min-h-16"
                 value={form.goal}
                 onChange={(event) => update("goal", event.target.value)}
                 required
@@ -192,12 +190,11 @@ export default function OnboardingPage() {
               value={String(form.dailyTimeMinutes)}
               onChange={(value) => update("dailyTimeMinutes", Number(value))}
             />
-            <div className="hidden md:block" />
           </div>
 
-          {error ? <p className="danger-note mt-5">{error}</p> : null}
+          {error ? <p className="danger-note mt-4">{error}</p> : null}
 
-          <div className="mt-7 flex flex-wrap gap-3">
+          <div className="mt-5">
             <button
               className="accent-button relative overflow-hidden"
               disabled={loading}
