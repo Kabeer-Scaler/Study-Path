@@ -6,10 +6,10 @@
     "node": ">=22.5.0"
   },
   "scripts": {
-    "dev": "NODE_OPTIONS='--experimental-sqlite' next dev",
-    "build": "NODE_OPTIONS='--experimental-sqlite' next build",
-    "test": "NODE_OPTIONS='--experimental-sqlite' tsx --test tests/core.test.ts",
-    "start": "NODE_OPTIONS='--experimental-sqlite' next start"
+    "dev": "set NODE_OPTIONS=--experimental-sqlite&& next dev",
+    "build": "set NODE_OPTIONS=--experimental-sqlite&& next build",
+    "test": "set NODE_OPTIONS=--experimental-sqlite&& tsx --test tests/core.test.ts",
+    "start": "set NODE_OPTIONS=--experimental-sqlite&& next start"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
