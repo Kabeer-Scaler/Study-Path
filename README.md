@@ -453,42 +453,6 @@ This helps prove that the most important adaptive behavior is not just UI-level 
 - Uses curriculum versioning when remedial lessons are inserted.
 - Includes dashboard analytics and history.
 
-## Viva Explanation Script
-
-You can explain the project like this:
-
-> LearnPath AI is an adaptive AI tutoring platform. First, the learner enters a topic and goal. The system generates a subject-specific concept graph and diagnostic questions using Groq. Then it runs an adaptive assessment, where each answer updates concept mastery and confidence. Based on this learner model, the curriculum engine creates a structured path of modules and lessons, ordered by prerequisites and personalised to weak areas. Lessons are AI-generated with explanations, analogies, examples, practice questions, and quizzes. After every quiz, the learner model updates again, and the system can skip mastered content, recommend review, or insert remedial lessons. The Socratic tutor helps the learner by asking guiding questions instead of directly giving the answer. Finally, the dashboard shows progress, mastery scores, quiz history, weak areas, and recommended next steps. All learner data is stored in SQLite, so the project behaves like a real learning platform rather than a one-time chatbot.
-
-## Possible Viva Questions
-
-### Why did you use a database?
-
-Because the project needs to remember users, assessments, answers, mastery scores, generated curricula, lesson progress, quizzes, tutor messages, and dashboard history. Without a database, progress would disappear after refresh.
-
-### Is the app hardcoded for Python?
-
-No. Python is only the default offline fallback. The user can type any topic. With Groq enabled, the app generates topic-specific concepts and questions. If Groq fails, the fallback still creates a safe topic-specific template instead of using Python questions.
-
-### How is this different from a normal chatbot?
-
-A chatbot only responds to messages. This project has a learner model, assessment engine, curriculum engine, lesson generation, progress tracking, adaptive remediation, and persistent dashboard analytics.
-
-### How does personalisation happen?
-
-Personalisation comes from concept-level mastery, confidence, self-rated level, learning style, daily time, quiz scores, and prerequisite ordering.
-
-### How do you prevent wrong AI output from breaking the project?
-
-The app validates JSON responses, checks lesson structure, retries once, uses timeouts, and falls back to deterministic content if AI output is invalid.
-
-### What happens when a learner fails a quiz?
-
-The quiz score lowers or limits mastery, records evidence, marks the lesson as needing review, updates recommendations, and can insert a remedial lesson into a new curriculum version.
-
-### What does the Socratic tutor do?
-
-It guides the learner with questions and hints. It avoids giving the final answer too early, especially on the first response.
-
 ## Final Summary
 
 LearnPath AI fulfills the required GenAI education workflow:
