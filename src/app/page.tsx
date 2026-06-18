@@ -6,7 +6,13 @@ import {
   GraduationCap,
   LineChart
 } from "lucide-react";
+import { findAuthenticatedUser, SESSION_COOKIE } from "@/lib/auth";
+import { readStore } from "@/lib/db/store";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { TypewriterText } from "@/components/TypewriterText";
+
+export const dynamic = "force-dynamic";
 
 const featureCards = [
   {
@@ -31,9 +37,16 @@ const featureCards = [
   }
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const store = await readStore();
+  const authUser = findAuthenticatedUser(
+    store,
+    (await cookies()).get(SESSION_COOKIE)?.value ?? ""
+  );
+  if (authUser) redirect(`/dashboard/${authUser.id}`);
+
   return (
-    <main className="animate-fade-in">
+    <main className="animate-fade-in flex min-h-0 flex-1 flex-col overflow-y-auto">
       {/* HERO */}
       <section className="relative">
         <div className="page-shell relative grid min-h-[560px] content-center gap-10 py-16 lg:grid-cols-[minmax(0,1fr)_480px] lg:items-center">

@@ -3,11 +3,12 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowRight, CheckCircle2, XCircle, Sparkles } from "lucide-react";
+import { ArrowRight, CheckCircle2, XCircle } from "lucide-react";
 
 type PublicQuestion = {
   questionId: string;
   conceptId: string;
+  conceptName?: string;
   question: string;
   type: string;
   options?: string[];
@@ -107,67 +108,62 @@ export default function AssessmentPage() {
 
   if (loading && !question && !complete) {
     return (
-      <main className="page-shell">
-        <div className="panel p-6 animate-pulse">Loading assessment...</div>
+      <main className="compact-page-shell app-page">
+        <div className="panel p-4 animate-pulse">Loading assessment...</div>
       </main>
     );
   }
 
   return (
-    <main className="page-shell animate-fade-in">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <main className="compact-page-shell app-page animate-fade-in overflow-hidden">
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="page-header-compact shrink-0">
           <div>
-            <span className="chip-accent">
-              <Sparkles size={14} aria-hidden /> Adaptive intake assessment
-            </span>
-            <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-ink">
-              Find your knowledge gaps
-            </h1>
-            <p className="mt-2 text-muted">
-              The next question changes based on your answer and current confidence.
+            <h1>Find your knowledge gaps</h1>
+            <p className="hidden text-sm text-muted sm:block">
+              Questions adapt to your answers and confidence.
             </p>
           </div>
-          <div className="rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-semibold text-ink shadow-soft">
+          <span className="chip-secondary shrink-0 tabular-nums">
             {answeredCount}/10+ answered
-          </div>
+          </span>
         </div>
 
-        <div className="mb-6 h-3 overflow-hidden rounded-full bg-surface-muted">
+        <div className="mb-3 h-1.5 shrink-0 overflow-hidden rounded-full bg-surface-muted">
           <div
             className="h-full rounded-full bg-accent transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
 
-        {error ? <p className="danger-note mb-4">{error}</p> : null}
+        {error ? <p className="danger-note mb-2 shrink-0 py-2 text-sm">{error}</p> : null}
 
         {complete ? (
-          <section className="panel p-8 text-center animate-scale-in">
-            <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-icy-aqua/40">
-              <CheckCircle2 size={32} className="text-blue-slate" aria-hidden />
+          <section className="panel p-6 text-center animate-scale-in">
+            <div className="grid h-14 w-14 place-items-center rounded-full bg-icy-aqua/40">
+              <CheckCircle2 size={28} className="text-blue-slate" aria-hidden />
             </div>
-            <h2 className="mt-4 text-2xl font-extrabold text-ink">Assessment complete</h2>
-            <p className="mt-2 text-muted">
-              Your concept-level mastery scores are ready.
-            </p>
-            <Link className="accent-button mx-auto mt-6 inline-flex" href={`/results/${userId}`}>
+            <h2 className="mt-3 text-xl font-extrabold text-ink">Assessment complete</h2>
+            <p className="mt-1 text-sm text-muted">Your mastery scores are ready.</p>
+            <Link className="accent-button mx-auto mt-4 inline-flex" href={`/results/${userId}`}>
               View results
               <ArrowRight size={18} aria-hidden />
             </Link>
           </section>
         ) : question ? (
-          <form className="panel p-6 sm:p-7 animate-fade-in" onSubmit={submit}>
-            <div className="flex flex-wrap gap-2">
-              <span className="chip-accent">{question.conceptId}</span>
+          <form className="panel p-4 sm:p-5 animate-fade-in" onSubmit={submit}>
+            <div className="flex shrink-0 flex-wrap gap-1.5">
+              <span className="chip-accent">
+                {question.conceptName ?? question.conceptId}
+              </span>
               <span className="chip-secondary">difficulty {question.difficulty}</span>
               <span className="chip-highlight">{question.type.replace("_", " ")}</span>
             </div>
-            <pre className="mt-5 whitespace-pre-wrap rounded-xl border border-line bg-surface-muted p-4 text-lg font-semibold leading-8 text-ink">
+            <p className="mt-3 shrink-0 rounded-xl border border-line bg-surface-muted p-3 text-base font-semibold leading-snug text-ink">
               {question.question}
-            </pre>
+            </p>
             {question.options?.length ? (
-              <div className="mt-5 grid gap-3">
+              <div className="mt-3 grid gap-2">
                 {question.options.map((option) => {
                   const checked = answer === option;
                   const isCorrectOption =
@@ -177,17 +173,17 @@ export default function AssessmentPage() {
                   return (
                     <label
                       key={option}
-                      className={`flex items-center gap-3 rounded-xl border px-3.5 py-3 text-sm transition ${
+                      className={`flex items-center gap-2.5 rounded-xl border px-3 py-2 text-sm transition ${
                         feedback
                           ? "cursor-default"
-                          : "cursor-pointer hover:-translate-y-0.5 hover:border-accent hover:shadow-glow"
+                          : "cursor-pointer hover:border-accent hover:bg-accent/5"
                       } ${
                         isCorrectOption
                           ? "border-highlight bg-highlight/15 text-ink"
                           : isWrongPick
                             ? "border-warn bg-warn/15 text-ink"
                             : checked
-                              ? "border-accent bg-accent/10 shadow-soft"
+                              ? "border-accent bg-accent/10"
                               : "border-line bg-surface"
                       }`}
                     >
@@ -212,7 +208,7 @@ export default function AssessmentPage() {
                 })}
               </div>
             ) : (
-              <label className="mt-5 block">
+              <label className="mt-3 block shrink-0">
                 <span className="field-label">Your answer</span>
                 <input
                   className="input-field"
@@ -221,36 +217,29 @@ export default function AssessmentPage() {
                   placeholder="Type your answer"
                   disabled={Boolean(feedback)}
                 />
-                {feedback ? (
-                  <span
-                    className={`mt-2 block text-sm font-semibold ${
-                      feedback.isCorrect ? "text-highlight" : "text-warn"
-                    }`}
-                  >
-                    {feedback.isCorrect
-                      ? "Correct"
-                      : `Correct answer: ${feedback.correctAnswer}`}
-                  </span>
-                ) : null}
               </label>
             )}
             {feedback ? (
-              <div className={`mt-5 ${feedback.isCorrect ? "success-note" : "danger-note"} animate-fade-in`}>
+              <div
+                className={`mt-3 shrink-0 text-sm ${feedback.isCorrect ? "success-note" : "danger-note"} animate-fade-in`}
+              >
                 <p className="font-semibold">{feedback.feedback}</p>
-                <p className="mt-1">{feedback.explanation}</p>
+                <p className="mt-0.5">{feedback.explanation}</p>
               </div>
             ) : null}
-            {feedback ? (
-              <button className="accent-button mt-6" type="button" onClick={moveNext}>
-                {pendingComplete ? "Finish assessment" : "Next question"}
-                <ArrowRight size={18} aria-hidden />
-              </button>
-            ) : (
-              <button className="accent-button mt-6" disabled={loading} type="submit">
-                {loading ? "Checking..." : "Submit answer"}
-                <ArrowRight size={18} aria-hidden />
-              </button>
-            )}
+            <div className="mt-4">
+              {feedback ? (
+                <button className="accent-button" type="button" onClick={moveNext}>
+                  {pendingComplete ? "Finish assessment" : "Next question"}
+                  <ArrowRight size={18} aria-hidden />
+                </button>
+              ) : (
+                <button className="accent-button" disabled={loading} type="submit">
+                  {loading ? "Checking..." : "Submit answer"}
+                  <ArrowRight size={18} aria-hidden />
+                </button>
+              )}
+            </div>
           </form>
         ) : null}
       </div>

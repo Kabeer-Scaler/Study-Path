@@ -34,7 +34,9 @@ export function TutorChat({
 
   async function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!message.trim()) return;
+    const text = message.trim();
+    if (!text) return;
+    setMessage("");
     setLoading(true);
     setError("");
     const optimistic: TutorMessage = {
@@ -42,28 +44,28 @@ export function TutorChat({
       userId,
       lessonId,
       role: "user",
-      message,
+      message: text,
       createdAt: new Date().toISOString()
     };
     setMessages((items) => [...items, optimistic]);
     const response = await fetch("/api/tutor/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, lessonId, message })
+      body: JSON.stringify({ userId, lessonId, message: text })
     });
     const payload = await response.json();
     setLoading(false);
     if (!response.ok) {
       setError(payload.error ?? "Tutor could not respond.");
+      setMessage(text);
       return;
     }
     setMessages(payload.messages);
-    setMessage("");
   }
 
   return (
-    <aside className="panel flex min-h-[520px] flex-col p-5">
-      <div className="flex items-center gap-3 border-b border-line pb-3">
+    <aside className="panel flex h-full max-h-full min-h-0 flex-col overflow-hidden p-4">
+      <div className="flex shrink-0 items-center gap-3 border-b border-line pb-3">
         <span className="grid h-10 w-10 place-items-center rounded-xl bg-accent text-bg shadow-soft">
           <Sparkles size={18} aria-hidden />
         </span>
@@ -74,7 +76,7 @@ export function TutorChat({
           <p className="text-xs text-muted">Guides first, explains after attempts</p>
         </div>
       </div>
-      <div ref={scrollRef} className="mt-4 flex-1 space-y-3 overflow-y-auto pr-1">
+      <div ref={scrollRef} className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1">
         {messages.length === 0 ? (
           <div className="rounded-xl border border-dashed border-line bg-surface-muted p-4 text-sm text-muted">
             Ask a question like "Can you just tell me what this loop prints?"
@@ -119,9 +121,9 @@ export function TutorChat({
           </div>
         ) : null}
       </div>
-      {error ? <p className="danger-note mt-3">{error}</p> : null}
+      {error ? <p className="danger-note mt-3 shrink-0">{error}</p> : null}
       <form
-        className="mt-4 flex gap-2 rounded-xl ring-focus-ai transition"
+        className="mt-4 flex shrink-0 gap-2 rounded-xl ring-focus-ai transition"
         onSubmit={send}
       >
         <label className="sr-only" htmlFor="tutor-message">

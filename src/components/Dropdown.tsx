@@ -179,7 +179,7 @@ export function Dropdown({
         aria-activedescendant={
           open ? `${listId}-option-${activeIndex}` : undefined
         }
-        className={`absolute z-40 mt-2 max-h-72 w-full origin-top overflow-auto rounded-xl border border-line bg-surface p-1.5 shadow-soft outline-none transition-all duration-200 ${
+        className={`absolute z-50 mt-2 max-h-72 w-full origin-top overflow-auto rounded-xl border border-line bg-surface p-1.5 shadow-soft outline-none transition-all duration-200 ${
           open
             ? "scale-100 opacity-100 translate-y-0"
             : "pointer-events-none scale-95 opacity-0 -translate-y-1"

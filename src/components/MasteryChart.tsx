@@ -43,17 +43,17 @@ export function MasteryChart({
         return (
           <div
             key={concept.id}
-            className="space-y-1.5 animate-stagger-fade"
+            className="flex flex-col gap-1.5 animate-stagger-fade"
             style={{ animationDelay: `${i * 50}ms` }}
           >
-            <div className="flex items-center justify-between gap-4 text-sm">
-              <span className="font-semibold text-ink">{concept.name}</span>
-              <span className="tabular-nums text-muted">
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="truncate font-semibold text-ink">{concept.name}</span>
+              <span className="shrink-0 tabular-nums text-muted">
                 <CountUp value={percent} />%
               </span>
             </div>
             <div
-              className="relative h-3 overflow-hidden rounded-full bg-surface-muted"
+              className={`relative overflow-hidden rounded-full bg-surface-muted ${compact ? "h-2" : "h-3"}`}
               aria-label={`${concept.name} mastery ${percent}%`}
             >
               <div

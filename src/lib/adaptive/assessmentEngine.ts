@@ -163,6 +163,15 @@ export function publicQuestion(question: AssessmentQuestion) {
   };
 }
 
+export function publicQuestionWithConcept(store: DataStore, question: AssessmentQuestion) {
+  return {
+    ...publicQuestion(question),
+    conceptName:
+      store.concepts.find((concept) => concept.id === question.conceptId)?.name ??
+      question.conceptId
+  };
+}
+
 export function getQuestionById(store: DataStore, questionId?: string) {
   return store.assessmentQuestions.find((question) => question.id === questionId);
 }

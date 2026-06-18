@@ -3,7 +3,7 @@ import {
   getMasteryMap,
   getMasteryRecord,
   getQuestionById,
-  publicQuestion
+  publicQuestionWithConcept
 } from "@/lib/adaptive/assessmentEngine";
 import { recordMasteryEvidence } from "@/lib/adaptive/evidenceEngine";
 import {
@@ -135,7 +135,9 @@ export async function POST(request: Request) {
         explanation: question.explanation,
         feedback: evaluation.feedback,
         correctAnswer: question.correctAnswer,
-        nextQuestion: nextQuestion ? publicQuestion(nextQuestion) : undefined,
+        nextQuestion: nextQuestion
+          ? publicQuestionWithConcept(store, nextQuestion)
+          : undefined,
         isComplete,
         userId: session.userId,
         answeredCount: store.assessmentAnswers.filter(

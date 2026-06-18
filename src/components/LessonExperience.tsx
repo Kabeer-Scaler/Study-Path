@@ -112,25 +112,22 @@ export function LessonExperience({ payload }: { payload: LessonPayload }) {
   }
 
   return (
-    <main className="page-shell animate-fade-in">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+    <main className="compact-page-shell app-page animate-fade-in overflow-hidden">
+      <div className="page-header-compact shrink-0">
+        <div className="min-w-0">
           <span className="chip-accent">
             <Sparkles size={14} aria-hidden /> {concept.name}
           </span>
-          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
-            {lesson.title}
-          </h1>
-          <p className="mt-2 max-w-3xl text-muted">{lesson.whyAssigned}</p>
+          <h1 className="mt-1 truncate">{lesson.title}</h1>
         </div>
-        <Link className="secondary-button" href={`/dashboard/${user.id}`}>
+        <Link className="secondary-button shrink-0" href={`/dashboard/${user.id}`}>
           Dashboard
         </Link>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <article className="space-y-5">
-          <section className="gradient-card">
+      <div className="grid min-h-0 flex-1 gap-3 overflow-hidden lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="flex min-h-0 flex-col overflow-hidden">
+          <section className="gradient-card shrink-0 p-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="chip-highlight">
                 Mastery {Math.round(payload.mastery * 100)}%
@@ -142,12 +139,12 @@ export function LessonExperience({ payload }: { payload: LessonPayload }) {
                 {lesson.estimatedMinutes} min
               </span>
             </div>
-            <nav className="mt-5 flex flex-wrap gap-2" aria-label="Lesson steps">
+            <nav className="mt-3 flex flex-wrap gap-1.5" aria-label="Lesson steps">
               {STEPS.map((item) => (
                 <button
                   key={item.id}
                   type="button"
-                  className={`rounded-full px-3 py-1 text-sm font-semibold transition ${
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-semibold transition ${
                     step === item.id
                       ? "bg-accent text-white"
                       : step > item.id
@@ -162,18 +159,19 @@ export function LessonExperience({ payload }: { payload: LessonPayload }) {
             </nav>
           </section>
 
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-0.5">
           {step === 1 ? (
-            <section className="panel p-5 sm:p-6">
-              <h2 className="text-xl font-bold text-ink">Introduction</h2>
-              <p className="mt-4 text-sm font-semibold text-muted">Objective</p>
-              <p className="mt-1 text-ink/90">{lesson.content.learningObjective}</p>
-              <p className="mt-4 leading-7 text-ink/90">{introText}</p>
+            <section className="panel p-4 sm:p-5">
+              <h2 className="text-lg font-bold text-ink">Introduction</h2>
+              <p className="mt-2 text-sm font-semibold text-muted">Objective</p>
+              <p className="mt-0.5 text-sm text-ink/90">{lesson.content.learningObjective}</p>
+              <p className="mt-3 text-sm leading-6 text-ink/90">{introText}</p>
             </section>
           ) : null}
 
           {step === 2 ? (
-            <section className="panel p-5 sm:p-6">
-              <h2 className="text-xl font-bold text-ink">Teaching</h2>
+            <section className="panel p-4 sm:p-5">
+              <h2 className="text-lg font-bold text-ink">Teaching</h2>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <div className="subtle-panel p-4">
                   <p className="text-sm font-bold text-ink">Explanation</p>
@@ -203,10 +201,10 @@ export function LessonExperience({ payload }: { payload: LessonPayload }) {
           ) : null}
 
           {step === 3 ? (
-            <section className="panel p-5 sm:p-6">
+            <section className="panel p-4 sm:p-5">
               <div className="flex items-center gap-2">
-                <CircleHelp size={20} className="text-accent" aria-hidden />
-                <h2 className="text-xl font-bold text-ink">Practice</h2>
+                <CircleHelp size={18} className="text-accent" aria-hidden />
+                <h2 className="text-lg font-bold text-ink">Practice</h2>
               </div>
               <p className="mt-3 font-semibold text-ink">
                 {lesson.content.practiceQuestion.question}
@@ -236,10 +234,10 @@ export function LessonExperience({ payload }: { payload: LessonPayload }) {
           ) : null}
 
           {step === 4 ? (
-            <section className="panel p-5 sm:p-6">
+            <section className="panel p-4 sm:p-5">
               <div className="flex items-center gap-2">
-                <ClipboardCheck size={20} className="text-accent" aria-hidden />
-                <h2 className="text-xl font-bold text-ink">Assessment</h2>
+                <ClipboardCheck size={18} className="text-accent" aria-hidden />
+                <h2 className="text-lg font-bold text-ink">Assessment</h2>
               </div>
               <div className="mt-4 space-y-5">
                 {lesson.content.quiz.map((question, index) => (
@@ -377,12 +375,15 @@ export function LessonExperience({ payload }: { payload: LessonPayload }) {
               </button>
             </div>
           ) : null}
-        </article>
-        <TutorChat
-          userId={user.id}
-          lessonId={lesson.id}
-          initialMessages={payload.tutorMessages}
-        />
+          </div>
+        </div>
+        <div className="min-h-0 overflow-hidden lg:max-h-full">
+          <TutorChat
+            userId={user.id}
+            lessonId={lesson.id}
+            initialMessages={payload.tutorMessages}
+          />
+        </div>
       </div>
     </main>
   );

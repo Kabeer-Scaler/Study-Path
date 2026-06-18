@@ -1,6 +1,6 @@
 import {
   createAssessmentSession,
-  publicQuestion
+  publicQuestionWithConcept
 } from "@/lib/adaptive/assessmentEngine";
 import { ensureSubjectDomain } from "@/lib/adaptive/subjectEngine";
 import { assertOwnsUser, getAuthenticatedUser } from "@/lib/auth";
@@ -25,12 +25,15 @@ export async function POST(request: Request) {
       if (!user) throw new Error("User not found.");
       await ensureSubjectDomain(store, user.subject);
       const { session, firstQuestion } = createAssessmentSession(store, user);
-      return { session, firstQuestion };
+      return {
+        session,
+        firstQuestion: publicQuestionWithConcept(store, firstQuestion)
+      };
     });
 
     return ok({
       sessionId: result.session.id,
-      firstQuestion: publicQuestion(result.firstQuestion)
+      firstQuestion: result.firstQuestion
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not start assessment.";
