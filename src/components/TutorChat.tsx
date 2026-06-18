@@ -83,6 +83,14 @@ export function TutorChat({
         {messages.map((item) => {
           const isUser = item.role === "user";
           const isFresh = !initialIdsRef.current.has(item.id);
+          const strategyLabel =
+            item.tutorStrategy === "hint"
+              ? "Hint"
+              : item.tutorStrategy === "explanation"
+                ? "Explaining"
+                : item.tutorStrategy === "guiding_question"
+                  ? "Guiding"
+                  : null;
           return (
             <div
               key={item.id}
@@ -92,6 +100,11 @@ export function TutorChat({
                   : "mr-auto border border-line bg-surface-muted text-ink animate-fade-in"
               }`}
             >
+              {!isUser && strategyLabel ? (
+                <span className="mb-1 inline-block rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
+                  {strategyLabel}
+                </span>
+              ) : null}
               {!isUser && isFresh ? (
                 <TypewriterText text={item.message} speedMs={14} cursor={false} />
               ) : (

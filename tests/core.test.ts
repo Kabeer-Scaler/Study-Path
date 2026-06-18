@@ -17,7 +17,8 @@ import {
 } from "../src/lib/adaptive/curriculumEngine";
 import { buildDashboard } from "../src/lib/adaptive/recommendationEngine";
 import { validateCurriculumOrdering, parseAiJsonWithFallback } from "../src/lib/adaptive/validationEngine";
-import { classifyTutorResponse, generateTutorResponse } from "../src/lib/ai/AIService";
+import { classifyTutorResponse, generateTutorResponse, resolveTutorStrategy } from "../src/lib/ai/AIService";
+import { buildForbiddenTexts } from "../src/lib/ai/tutorPolicy";
 import { getAIProvider } from "../src/lib/ai/provider";
 import {
   assessmentQuestions,
@@ -270,32 +271,104 @@ test("dashboard progress equals completed lessons divided by total lessons", () 
   assert.equal(dashboard.overallProgress, 50);
 });
 
+test("resolveTutorStrategy escalates by turn count", () => {
+  assert.equal(resolveTutorStrategy(1, "just tell me the answer"), "guiding_question");
+  assert.equal(resolveTutorStrategy(2, "I am stuck"), "hint");
+  assert.equal(resolveTutorStrategy(3, "still confused"), "explanation");
+  assert.equal(resolveTutorStrategy(1, "I give up"), "explanation");
+});
+
+test("classifyTutorResponse rejects leaky LLM replies", () => {
+  const concept = concepts.find((item) => item.id === "loops");
+  assert.ok(concept);
+  const forbiddenTexts = buildForbiddenTexts({
+    title: "Loops",
+    learningObjective: "Understand loops",
+    explanation: "Loops repeat code.",
+    analogy: "Like a playlist on repeat.",
+    example: "for i in range(3): print(i)",
+    codeExample: "for i in range(3):\n    print(i)",
+    commonMistake: "Off-by-one errors.",
+    practiceQuestion: {
+      question: "What does this loop print?",
+      answer: "0, 1, 2",
+      hint: "Count from zero."
+    },
+    quiz: [
+      {
+        questionId: "q1",
+        question: "How many times does range(3) iterate?",
+        type: "multiple_choice",
+        options: ["3", "2", "4", "0"],
+        correctAnswer: "3",
+        explanation: "range(3) yields 0, 1, 2."
+      }
+    ]
+  });
+
+  const leaky = classifyTutorResponse({
+    reply: "The answer is 3",
+    requiredStrategy: "guiding_question",
+    userTurns: 1,
+    message: "just tell me",
+    concept,
+    forbiddenTexts
+  });
+  assert.equal(leaky.valid, false);
+
+  const quotesAnswer = classifyTutorResponse({
+    reply: "Remember that the correct option is 3 because range counts three values.",
+    requiredStrategy: "guiding_question",
+    userTurns: 1,
+    message: "help",
+    concept,
+    forbiddenTexts
+  });
+  assert.equal(quotesAnswer.valid, false);
+
+  const valid = classifyTutorResponse({
+    reply: "What do you think happens on the first iteration of the loop?",
+    requiredStrategy: "guiding_question",
+    userTurns: 1,
+    message: "just tell me",
+    concept,
+    forbiddenTexts
+  });
+  assert.equal(valid.valid, true);
+});
+
 test("tutor first response does not directly reveal the answer", () => {
   const concept = concepts.find((item) => item.id === "loops");
   assert.ok(concept);
+  const priorMessages = [
+    {
+      id: "msg_user",
+      userId: "user_test",
+      lessonId: "lesson_test",
+      role: "user" as const,
+      message: "Can you just tell me what this loop prints?",
+      createdAt: "2026-06-10T00:00:00.000Z"
+    }
+  ];
   const response = generateTutorResponse({
     concept,
     lessonTitle: "For Loops",
     mastery: 0.4,
     message: "Can you just tell me what this loop prints?",
-    priorMessages: [
-      {
-        id: "msg_user",
-        userId: "user_test",
-        lessonId: "lesson_test",
-        role: "user",
-        message: "Can you just tell me what this loop prints?",
-        createdAt: "2026-06-10T00:00:00.000Z"
-      }
-    ]
+    priorMessages,
+    requiredStrategy: resolveTutorStrategy(1, "Can you just tell me what this loop prints?"),
+    practiceStem: "What does this loop print?"
   });
   const policy = classifyTutorResponse({
-    ...response,
-    concept,
+    reply: response.reply,
+    requiredStrategy: "guiding_question",
+    userTurns: 1,
     message: "Can you just tell me what this loop prints?",
-    priorMessages: [],
+    concept,
+    forbiddenTexts: ["0, 1, 2"]
   });
   assert.equal(policy.valid, true);
+  assert.equal(response.tutorStrategy, "guiding_question");
   assert.doesNotMatch(response.reply, /0,\s*1,\s*2/);
 });
 
