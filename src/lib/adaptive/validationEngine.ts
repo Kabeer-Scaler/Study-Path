@@ -43,8 +43,15 @@ export function validateLessonContent(
   if (content.practiceQuestion?.code && !validatePythonSnippet(content.practiceQuestion.code)) {
     errors.push("Practice code contains a blocked Python pattern.");
   }
-  if (!Array.isArray(content.quiz) || content.quiz.length === 0) {
-    errors.push("Lesson quiz is empty.");
+  if (!Array.isArray(content.quiz) || content.quiz.length < 3) {
+    errors.push("Lesson quiz must have at least 3 questions.");
+  }
+  const explanationWords = content.explanation?.trim().split(/\s+/).length ?? 0;
+  if (explanationWords < 100) {
+    errors.push("Lesson explanation is too short for a full teaching unit.");
+  }
+  if (/like a map/i.test(content.analogy ?? "")) {
+    errors.push("Lesson analogy is too generic.");
   }
   for (const quiz of content.quiz ?? []) {
     if (!quiz.question?.trim() || !quiz.correctAnswer?.trim()) {

@@ -102,11 +102,17 @@ export async function POST(request: Request) {
         insertedLesson = insertRemedialLesson(store, lesson, user);
         const concept = store.concepts.find((item) => item.id === lesson.conceptId);
         if (insertedLesson && concept) {
+          const misconceptions = graded
+            .map((item) => item.misconception)
+            .filter((value): value is string => Boolean(value));
+          const missedQuestions = quiz
+            .filter((question, index) => !graded[index]?.isCorrect)
+            .map((question) => question.question);
           insertedLesson.content = await generateLessonWithProvider(
             concept,
             mastery.masteryScore,
             user.preferredStyle,
-            true
+            { mode: "remedial", misconceptions, missedQuestions }
           );
         }
       }

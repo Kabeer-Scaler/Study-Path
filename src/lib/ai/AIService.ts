@@ -6,7 +6,13 @@ import {
   isLessonContent,
   isTutorPayload
 } from "@/lib/ai/provider";
-import { SOCRATIC_TUTOR_SYSTEM_PROMPT } from "@/lib/ai/prompts";
+import {
+  buildLessonUserPrompt,
+  buildTutorUserPrompt,
+  normalizePreferredStyle,
+  type LessonMode
+} from "@/lib/ai/promptBuilder";
+import { LESSON_AUTHOR_SYSTEM_PROMPT, SOCRATIC_TUTOR_SYSTEM_PROMPT } from "@/lib/ai/prompts";
 import type {
   AssessmentQuestion,
   Concept,
@@ -425,6 +431,70 @@ export function generateAssessmentQuestion(
   );
 }
 
+export type LessonGenerateOptions = {
+  mode?: LessonMode;
+  misconceptions?: string[];
+  missedQuestions?: string[];
+};
+
+function resolveLessonOptions(
+  remedialOrOptions: boolean | LessonGenerateOptions = false
+): LessonGenerateOptions {
+  if (typeof remedialOrOptions === "boolean") {
+    return { mode: remedialOrOptions ? "remedial" : "core" };
+  }
+  return { mode: remedialOrOptions.mode ?? "core", ...remedialOrOptions };
+}
+
+function padQuiz(
+  quiz: LessonContent["quiz"],
+  conceptId: string,
+  conceptName: string,
+  subject: string
+) {
+  const padded = [...quiz];
+  let index = padded.length;
+  while (padded.length < 3) {
+    index += 1;
+    padded.push({
+      questionId: `lesson_${conceptId}_pad_q${index}`,
+      question: `Which statement best applies ${conceptName} within ${subject}?`,
+      type: "multiple_choice",
+      options: [
+        `It is a core idea in ${subject}`,
+        "It is unrelated to the topic",
+        "It only appears in assessments",
+        "It replaces every other concept"
+      ],
+      correctAnswer: `It is a core idea in ${subject}`,
+      explanation: `${conceptName} belongs to the subject matter and should connect to real ideas in ${subject}.`
+    });
+  }
+  return padded;
+}
+
+function richExplanation(
+  base: string,
+  example: string,
+  style: ReturnType<typeof normalizePreferredStyle>,
+  isRemedial: boolean
+) {
+  const styleTail =
+    style === "code"
+      ? "Trace each step in order before you change anything."
+      : style === "visual"
+        ? "Follow the numbered steps and picture how each part connects to the next."
+        : "Start from a concrete scenario, then name the pattern you notice.";
+  const remedialTail = isRemedial
+    ? " Take one small step at a time and check your understanding after each step."
+    : "";
+  return `${base} ${example} ${styleTail}${remedialTail}`.trim();
+}
+
+function lessonIntro(objective: string, conceptName: string) {
+  return `In this unit you will build a clear mental model of ${conceptName.toLowerCase()} and connect it to the bigger picture. ${objective}`;
+}
+
 function isProgrammingSubject(subject: string) {
   return /\b(python|javascript|typescript|java|c\+\+|c#|programming|coding|software|react|node|sql|html|css|algorithm|data structure)\b/i.test(
     subject
@@ -442,19 +512,32 @@ example = "Write a tiny example that demonstrates this concept."
 print(concept, example)`;
 }
 
+function ensureExplanationDepth(
+  text: string,
+  conceptName: string,
+  subject: string
+) {
+  let result = text.trim();
+  const bridge = `When you study ${conceptName} in ${subject}, connect each example back to the objective. Ask what changes, what stays the same, and how you would spot this idea in a new problem. Re-read the example, predict the outcome, then check your prediction against the explanation.`;
+  while (result.split(/\s+/).length < 100) {
+    result = `${result} ${bridge}`;
+  }
+  return result;
+}
+
 export function generateLesson(
   concept: Concept,
   mastery: number,
   preferredStyle: string,
   isRemedial = false
 ): LessonContent {
+  const style = normalizePreferredStyle(preferredStyle);
   const base =
     conceptLessonCopy[concept.id] ??
     {
       objective: `Understand the role of ${concept.name} in ${concept.subject}.`,
       explanation: `${concept.name} is one part of ${concept.subject}. Focus on what it means, why it matters, and how it connects to the surrounding ideas.`,
-      analogy:
-        "Think of the topic like a map: this concept is one landmark that helps you navigate the whole area.",
+      analogy: `Think of ${concept.name} as one piece in a larger ${concept.subject} puzzle—each piece has a shape that only fits in certain places.`,
       example: `A simple example in ${concept.subject} is recognizing when ${concept.name.toLowerCase()} is being used and explaining why it matters.`,
       codeExample: fallbackCodeExample(concept),
       commonMistake:
@@ -493,53 +576,61 @@ export function generateLesson(
         }
       ]
     };
-  const practiceFirst = /practice/i.test(preferredStyle);
-  const codeFocused = /code/i.test(preferredStyle);
-  const visual = /visual/i.test(preferredStyle);
 
-  const styleNote = practiceFirst
-    ? "Try the example first, then use the explanation to name the pattern you noticed."
-    : codeFocused
-      ? "Focus on tracing each line of the code before changing it."
-      : visual
-        ? "Picture each value moving through the steps like labels on a small flowchart."
-        : "Read the idea, trace the example, then answer the quick check.";
+  const explanation = ensureExplanationDepth(
+    richExplanation(base.explanation, base.example, style, isRemedial),
+    concept.name,
+    concept.subject
+  );
 
-  const lesson = {
+  const lesson: LessonContent = {
     title: `${isRemedial ? "Review: " : ""}${concept.name}`,
     learningObjective: base.objective,
-    explanation:
-      mastery < 0.5
-        ? `${base.explanation} ${styleNote} We will keep this short and rebuild the idea from the first step.`
-        : `${base.explanation} ${styleNote}`,
+    intro: lessonIntro(base.objective, concept.name),
+    explanation,
     analogy: base.analogy,
     example: base.example,
     codeExample: base.codeExample,
     commonMistake: base.commonMistake,
     practiceQuestion: base.practiceQuestion,
-    quiz: base.quiz.map((question) => ({
-      ...question,
-      type: question.type as QuestionType
-    }))
+    quiz: padQuiz(
+      base.quiz.map((question) => ({
+        ...question,
+        type: question.type as QuestionType
+      })),
+      concept.id,
+      concept.name,
+      concept.subject
+    )
   };
 
   const validation = validateLessonContent(lesson, concept.id);
   if (validation.valid) return lesson;
 
+  const safeExplanation = ensureExplanationDepth(
+    `This lesson focuses on ${concept.name} within ${concept.subject}. ${base.explanation}`,
+    concept.name,
+    concept.subject
+  );
   return {
     title: `Safe Fallback: ${concept.name}`,
     learningObjective: `Practice the core idea of ${concept.name}.`,
-    explanation:
-      "We could not validate the generated lesson safely, so this fallback keeps the content short and aligned to the selected concept.",
-    analogy: "Treat the concept like a small step you can trace one line at a time.",
+    intro: lessonIntro(`Practice the core idea of ${concept.name}.`, concept.name),
+    explanation: safeExplanation,
+    analogy: `Treat ${concept.name} as one step you can trace one line at a time.`,
     example: base.example,
     codeExample: base.codeExample,
     commonMistake: base.commonMistake,
     practiceQuestion: base.practiceQuestion,
-    quiz: base.quiz.map((question) => ({
-      ...question,
-      type: question.type as QuestionType
-    }))
+    quiz: padQuiz(
+      base.quiz.map((question) => ({
+        ...question,
+        type: question.type as QuestionType
+      })),
+      concept.id,
+      concept.name,
+      concept.subject
+    )
   };
 }
 
@@ -547,57 +638,30 @@ export async function generateLessonWithProvider(
   concept: Concept,
   mastery: number,
   preferredStyle: string,
-  isRemedial = false
+  remedialOrOptions: boolean | LessonGenerateOptions = false
 ) {
+  const options = resolveLessonOptions(remedialOrOptions);
+  const isRemedial = options.mode === "remedial";
   const fallback = generateLesson(concept, mastery, preferredStyle, isRemedial);
-  const prompt = `Generate one short interactive lesson for a personalised learning platform.
-
-Subject: ${concept.subject}
-Concept id: ${concept.id}
-Concept name: ${concept.name}
-Learner mastery: ${mastery}
-Preferred style: ${preferredStyle}
-Remedial lesson: ${isRemedial ? "yes" : "no"}
-
-Rules:
-- Stay strictly inside this concept.
-- If the subject is programming, include a short safe code example.
-- If the subject is not programming, put a short applied scenario in codeExample and begin it with "No code needed:".
-- If code is included, do not include file system, network, shell, eval, exec, open, subprocess, os, requests, or infinite loop code.
-- Include exactly 2 quiz questions.
-- Every quiz question must have one clear correct answer.
-- Return JSON only with this shape:
-{
-  "title": "",
-  "learningObjective": "",
-  "explanation": "",
-  "analogy": "",
-  "example": "",
-  "codeExample": "",
-  "commonMistake": "",
-  "practiceQuestion": { "question": "", "code": "", "answer": "", "hint": "" },
-  "quiz": [
-    {
-      "questionId": "lesson_${concept.id}_ai_q1",
-      "question": "",
-      "type": "multiple_choice",
-      "options": [],
-      "correctAnswer": "",
-      "explanation": ""
-    }
-  ]
-}`;
+  const style = normalizePreferredStyle(preferredStyle);
+  const userPrompt = buildLessonUserPrompt({
+    subject: concept.subject,
+    conceptId: concept.id,
+    conceptName: concept.name,
+    conceptDescription: concept.description,
+    mastery,
+    style,
+    mode: options.mode ?? "core",
+    misconceptions: options.misconceptions,
+    missedQuestions: options.missedQuestions
+  });
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const raw = await callLLMJson({
         messages: [
-          {
-            role: "system",
-            content:
-              "You create concise, safe, valid JSON lessons for adaptive learners across any subject."
-          },
-          { role: "user", content: prompt }
+          { role: "system", content: LESSON_AUTHOR_SYSTEM_PROMPT },
+          { role: "user", content: userPrompt }
         ]
       });
       if (!raw) return fallback;
@@ -728,36 +792,31 @@ export async function generateTutorResponseWithProvider(args: {
   message: string;
   priorMessages: TutorMessage[];
   misconception?: string;
+  learningObjective?: string;
+  explanationExcerpt?: string;
+  practiceQuestion?: string;
 }) {
   const fallback = generateTutorResponse(args);
   const userTurns = args.priorMessages.filter((item) => item.role === "user").length;
-  const prompt = `Current subject: ${args.concept.subject}
-Current lesson: ${args.lessonTitle}
-Current concept: ${args.concept.name}
-Learner mastery: ${args.mastery}
-Prior learner attempts in this chat: ${userTurns}
-Known misconception: ${args.misconception ?? "none"}
-Learner message: ${args.message}
-
-Return valid JSON only:
-{
-  "reply": "",
-  "tutorStrategy": "guiding_question | hint | explanation"
-}
-
-Strict policy:
-- The first response must not reveal the final answer.
-- Ask one focused guiding question unless the learner has tried at least twice or says they give up.
-- Keep the reply under 70 words.
-- Never shame the learner.
-- Use current lesson context.`;
+  const userPrompt = buildTutorUserPrompt({
+    subject: args.concept.subject,
+    lessonTitle: args.lessonTitle,
+    conceptName: args.concept.name,
+    mastery: args.mastery,
+    userTurns,
+    misconception: args.misconception,
+    message: args.message,
+    learningObjective: args.learningObjective,
+    explanationExcerpt: args.explanationExcerpt,
+    practiceQuestion: args.practiceQuestion
+  });
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const raw = await callLLMJson({
         messages: [
           { role: "system", content: SOCRATIC_TUTOR_SYSTEM_PROMPT },
-          { role: "user", content: prompt }
+          { role: "user", content: userPrompt }
         ],
         temperature: 0.1
       });

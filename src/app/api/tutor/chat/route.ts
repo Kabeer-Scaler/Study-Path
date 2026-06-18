@@ -63,7 +63,10 @@ export async function POST(request: Request) {
         mastery,
         message: body.message ?? "",
         priorMessages: [...history, userMessage],
-        misconception: latestMisconception
+        misconception: latestMisconception,
+        learningObjective: lesson.content.learningObjective,
+        explanationExcerpt: lesson.content.explanation.slice(0, 400),
+        practiceQuestion: lesson.content.practiceQuestion.question
       });
       const policy = classifyTutorResponse({
         ...tutor,
