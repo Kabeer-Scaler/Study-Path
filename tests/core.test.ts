@@ -650,3 +650,54 @@ test("mastery reads are scoped to the learner's current subject", () => {
     2
   );
 });
+
+test("mastery reads match subject case-insensitively", () => {
+  const store = emptyStore();
+  const conceptSubject = "DevOps and platform eng";
+  store.concepts.push(
+    {
+      id: "devops_principles",
+      subject: conceptSubject,
+      name: "DevOps Principles",
+      description: "Collaboration and automation.",
+      difficulty: 1,
+      prerequisites: []
+    },
+    {
+      id: "devops_ci_cd",
+      subject: conceptSubject,
+      name: "CI/CD",
+      description: "Continuous integration and delivery.",
+      difficulty: 2,
+      prerequisites: ["devops_principles"]
+    }
+  );
+
+  const user = addUser(store, "Case");
+  user.subject = "DEVOPS AND PLATFORM ENG";
+  store.learnerMastery.push(
+    {
+      id: "mastery_devops_principles",
+      userId: user.id,
+      conceptId: "devops_principles",
+      masteryScore: 0.62,
+      confidence: 0.7,
+      updatedAt: "2026-06-10T00:00:00.000Z"
+    },
+    {
+      id: "mastery_devops_ci_cd",
+      userId: user.id,
+      conceptId: "devops_ci_cd",
+      masteryScore: 0.68,
+      confidence: 0.67,
+      updatedAt: "2026-06-10T00:00:00.000Z"
+    }
+  );
+
+  const scoped = getMasteryRecordsForSubject(store, user.id, user.subject);
+  assert.equal(scoped.length, 2);
+
+  const dashboard = buildDashboard(store, user.id);
+  assert.equal(Object.keys(dashboard.mastery).length, 2);
+  assert.equal(dashboard.conceptOrder.length, 2);
+});

@@ -46,9 +46,7 @@ export function ensureMasteryRecords(store: DataStore, user: User) {
 }
 
 function subjectConceptIds(store: DataStore, subject: string) {
-  return new Set(
-    store.concepts.filter((concept) => concept.subject === subject).map((concept) => concept.id)
-  );
+  return new Set(getSubjectConcepts(store, subject).map((concept) => concept.id));
 }
 
 export function getMasteryRecordsForSubject(

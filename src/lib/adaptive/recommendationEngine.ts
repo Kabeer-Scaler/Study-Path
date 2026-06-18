@@ -1,5 +1,6 @@
 import { getCurriculumBundle } from "@/lib/adaptive/curriculumEngine";
 import { getMasteryRecordsForSubject } from "@/lib/adaptive/assessmentEngine";
+import { getSubjectConcepts } from "@/lib/adaptive/subjectEngine";
 import type { DashboardData, DataStore, Lesson } from "@/lib/types";
 
 const completedStatuses = new Set(["completed", "mastered", "skipped"]);
@@ -53,11 +54,7 @@ export function buildDashboard(store: DataStore, userId: string): DashboardData 
     ? getMasteryRecordsForSubject(store, userId, user.subject)
     : store.learnerMastery.filter((item) => item.userId === userId);
   const subjectConceptIds = user
-    ? new Set(
-        store.concepts
-          .filter((concept) => concept.subject === user.subject)
-          .map((concept) => concept.id)
-      )
+    ? new Set(getSubjectConcepts(store, user.subject).map((concept) => concept.id))
     : new Set(masteryRecords.map((record) => record.conceptId));
   const mastery = Object.fromEntries(
     masteryRecords.map((item) => [item.conceptId, item.masteryScore])
