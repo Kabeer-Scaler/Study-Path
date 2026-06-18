@@ -14,6 +14,7 @@ import {
 import { buildDashboard } from "../src/lib/adaptive/recommendationEngine";
 import { validateCurriculumOrdering, parseAiJsonWithFallback } from "../src/lib/adaptive/validationEngine";
 import { classifyTutorResponse, generateTutorResponse } from "../src/lib/ai/AIService";
+import { getAIProvider } from "../src/lib/ai/provider";
 import {
   assessmentQuestions,
   concepts,
@@ -305,13 +306,13 @@ test("invalid AI JSON triggers fallback", () => {
   assert.deepEqual(result.value, fallback);
 });
 
-test("arbitrary topics require Groq instead of generic fallback questions", async () => {
+test("arbitrary topics require an LLM provider instead of generic fallback questions", async () => {
   const store = emptyStore();
   const previousProvider = process.env.LLM_PROVIDER;
   process.env.LLM_PROVIDER = "fallback";
   await assert.rejects(
     () => ensureSubjectDomain(store, "Photosynthesis"),
-    /requires Groq/
+    /requires an LLM provider/
   );
   if (previousProvider === undefined) {
     delete process.env.LLM_PROVIDER;
@@ -342,7 +343,29 @@ test("machine learning fallback questions are factual and not repeated meta temp
   assertDifficultyLadder(store, "Machine Learning");
 });
 
-test("Groq provider replaces seeded Python assessment with generated domain", async () => {
+test("getAIProvider returns azure when Azure env vars are set", () => {
+  const previousProvider = process.env.LLM_PROVIDER;
+  const previousEndpoint = process.env.AZURE_OPENAI_ENDPOINT;
+  const previousKey = process.env.AZURE_OPENAI_API_KEY;
+  const previousDeployment = process.env.AZURE_OPENAI_DEPLOYMENT;
+
+  process.env.LLM_PROVIDER = "azure";
+  process.env.AZURE_OPENAI_ENDPOINT = "https://test.openai.azure.com";
+  process.env.AZURE_OPENAI_API_KEY = "test-key";
+  process.env.AZURE_OPENAI_DEPLOYMENT = "gpt-4o-mini";
+  assert.equal(getAIProvider(), "azure");
+
+  if (previousProvider === undefined) delete process.env.LLM_PROVIDER;
+  else process.env.LLM_PROVIDER = previousProvider;
+  if (previousEndpoint === undefined) delete process.env.AZURE_OPENAI_ENDPOINT;
+  else process.env.AZURE_OPENAI_ENDPOINT = previousEndpoint;
+  if (previousKey === undefined) delete process.env.AZURE_OPENAI_API_KEY;
+  else process.env.AZURE_OPENAI_API_KEY = previousKey;
+  if (previousDeployment === undefined) delete process.env.AZURE_OPENAI_DEPLOYMENT;
+  else process.env.AZURE_OPENAI_DEPLOYMENT = previousDeployment;
+});
+
+test("LLM provider replaces seeded Python assessment with generated domain", async () => {
   const store = emptyStore();
   store.assessmentQuestions = [...assessmentQuestions];
   const previousProvider = process.env.LLM_PROVIDER;

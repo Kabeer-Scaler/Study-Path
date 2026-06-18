@@ -2,7 +2,7 @@ import { assessmentQuestions } from "@/lib/db/seed";
 import { normalizeText } from "@/lib/db/store";
 import { validateLessonContent } from "@/lib/adaptive/validationEngine";
 import {
-  callGroqJson,
+  callLLMJson,
   isLessonContent,
   isTutorPayload
 } from "@/lib/ai/provider";
@@ -590,7 +590,7 @@ Rules:
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      const raw = await callGroqJson({
+      const raw = await callLLMJson({
         messages: [
           {
             role: "system",
@@ -605,13 +605,13 @@ Rules:
       if (isLessonContent(parsed)) {
         const validation = validateLessonContent(parsed, concept.id);
         if (validation.valid) return parsed;
-        console.warn("Invalid Groq lesson content", validation.errors);
+        console.warn("Invalid LLM lesson content", validation.errors);
       } else {
-        console.warn("Groq lesson response failed schema validation.");
+        console.warn("LLM lesson response failed schema validation.");
       }
     } catch (error) {
       console.warn(
-        "Groq lesson generation failed",
+        "LLM lesson generation failed",
         error instanceof Error ? error.message : "unknown error"
       );
     }
@@ -754,7 +754,7 @@ Strict policy:
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      const raw = await callGroqJson({
+      const raw = await callLLMJson({
         messages: [
           { role: "system", content: SOCRATIC_TUTOR_SYSTEM_PROMPT },
           { role: "user", content: prompt }
@@ -764,10 +764,10 @@ Strict policy:
       if (!raw) return fallback;
       const parsed = JSON.parse(raw) as unknown;
       if (isTutorPayload(parsed)) return parsed;
-      console.warn("Groq tutor response failed schema validation.");
+      console.warn("LLM tutor response failed schema validation.");
     } catch (error) {
       console.warn(
-        "Groq tutor generation failed",
+        "LLM tutor generation failed",
         error instanceof Error ? error.message : "unknown error"
       );
     }

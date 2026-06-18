@@ -5,12 +5,23 @@ type ChatMessage = {
   content: string;
 };
 
-type GroqChatResponse = {
+type ChatCompletionResponse = {
   choices?: Array<{
     message?: {
       content?: string;
     };
   }>;
+};
+
+export type AIProvider = "groq" | "azure" | "fallback";
+
+type ProviderConfig = {
+  provider: "groq" | "azure";
+  url: string;
+  apiKey: string;
+  model: string;
+  authHeader: "bearer" | "api-key";
+  includeModelInBody: boolean;
 };
 
 function sleep(ms: number) {
@@ -26,39 +37,108 @@ function retryDelayFrom(response: Response, attempt: number) {
   return 1500 * (attempt + 1);
 }
 
-export function getAIProvider() {
-  const provider = process.env.LLM_PROVIDER?.trim().toLowerCase();
-  if (provider === "groq" && process.env.GROQ_API_KEY?.trim()) {
-    return "groq" as const;
-  }
-  return "fallback" as const;
+function providerLabel(provider: AIProvider) {
+  return provider === "azure" ? "Azure" : "Groq";
 }
 
-export async function callGroqJson({
+function getProviderConfig(): ProviderConfig | undefined {
+  const provider = getAIProvider();
+  if (provider === "azure") {
+    const endpoint = process.env.AZURE_OPENAI_ENDPOINT!.replace(/\/$/, "");
+    const deployment = process.env.AZURE_OPENAI_DEPLOYMENT!;
+    const apiVersion = process.env.AZURE_OPENAI_API_VERSION || "2024-04-01-preview";
+    return {
+      provider,
+      url: `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`,
+      apiKey: process.env.AZURE_OPENAI_API_KEY!,
+      model: deployment,
+      authHeader: "api-key",
+      includeModelInBody: false
+    };
+  }
+  if (provider === "groq") {
+    return {
+      provider,
+      url: "https://api.groq.com/openai/v1/chat/completions",
+      apiKey: process.env.GROQ_API_KEY!,
+      model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+      authHeader: "bearer",
+      includeModelInBody: true
+    };
+  }
+  return undefined;
+}
+
+export function getAIProvider(): AIProvider {
+  const provider = process.env.LLM_PROVIDER?.trim().toLowerCase();
+  if (
+    provider === "azure" &&
+    process.env.AZURE_OPENAI_ENDPOINT?.trim() &&
+    process.env.AZURE_OPENAI_API_KEY?.trim() &&
+    process.env.AZURE_OPENAI_DEPLOYMENT?.trim()
+  ) {
+    return "azure";
+  }
+  if (provider === "groq" && process.env.GROQ_API_KEY?.trim()) {
+    return "groq";
+  }
+  return "fallback";
+}
+
+export async function callLLMJson({
   messages,
   temperature = 0.2
 }: {
   messages: ChatMessage[];
   temperature?: number;
 }) {
-  if (getAIProvider() !== "groq") return undefined;
+  const config = getProviderConfig();
+  if (!config) return undefined;
+
+  const label = providerLabel(config.provider);
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json"
+  };
+  if (config.authHeader === "api-key") {
+    headers["api-key"] = config.apiKey;
+  } else {
+    headers.Authorization = `Bearer ${config.apiKey}`;
+  }
+
+  const body: Record<string, unknown> = {
+    messages,
+    temperature,
+    response_format: { type: "json_object" }
+  };
+  if (config.includeModelInBody) {
+    body.model = config.model;
+  }
 
   let lastStatus = 0;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      signal: AbortSignal.timeout(30000),
-      headers: {
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
-        messages,
-        temperature,
-        response_format: { type: "json_object" }
-      })
-    });
+    let response: Response;
+    try {
+      response = await fetch(config.url, {
+        method: "POST",
+        signal: AbortSignal.timeout(30000),
+        headers,
+        body: JSON.stringify(body)
+      });
+    } catch (error) {
+      if (attempt < 2) {
+        await sleep(1500 * (attempt + 1));
+        continue;
+      }
+      const detail =
+        error instanceof Error && error.cause instanceof Error
+          ? error.cause.message
+          : error instanceof Error
+            ? error.message
+            : "unknown error";
+      throw new Error(
+        `${label} network error: could not reach the API endpoint (${detail}). Check internet/DNS and AZURE_OPENAI_ENDPOINT.`
+      );
+    }
 
     if (response.status === 429 && attempt < 2) {
       lastStatus = response.status;
@@ -69,21 +149,21 @@ export async function callGroqJson({
     if (!response.ok) {
       throw new Error(
         response.status === 429
-          ? "Groq rate limit reached. Please wait a minute and try again."
-          : `Groq request failed with status ${response.status}.`
+          ? `${label} rate limit reached. Please wait a minute and try again.`
+          : `${label} request failed with status ${response.status}.`
       );
     }
 
-    const payload = (await response.json()) as GroqChatResponse;
+    const payload = (await response.json()) as ChatCompletionResponse;
     const content = payload.choices?.[0]?.message?.content;
-    if (!content) throw new Error("Groq returned an empty response.");
+    if (!content) throw new Error(`${label} returned an empty response.`);
     return content;
   }
 
   throw new Error(
     lastStatus === 429
-      ? "Groq rate limit reached. Please wait a minute and try again."
-      : "Groq request failed after retries."
+      ? `${label} rate limit reached. Please wait a minute and try again.`
+      : `${label} request failed after retries.`
   );
 }
 

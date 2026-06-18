@@ -22,12 +22,12 @@ This makes the project more than a chatbot. It combines GenAI with a rule-based 
 
 - **Frontend:** Next.js 15, React 19, TypeScript
 - **Styling:** Tailwind CSS
-- **AI provider:** Groq API through `fetch`
+- **AI provider:** Groq or Azure AI Foundry through `fetch`
 - **Database:** SQLite using Node's built-in `node:sqlite`
 - **Testing:** Node test runner through `tsx`
 - **Icons/UI:** `lucide-react`
 
-No Groq SDK is required. The project calls Groq's OpenAI-compatible chat completions endpoint directly.
+No SDK is required. The project calls OpenAI-compatible chat completions endpoints directly.
 
 ## Core Features
 
@@ -71,15 +71,15 @@ Important files:
 
 The app is not hardcoded only for Python.
 
-Python Programming Fundamentals is only the default offline seed subject. When `LLM_PROVIDER=groq` and a Groq key is available, Groq is used first to generate topic-specific concepts and questions. This includes the default Python topic too.
+Python Programming Fundamentals is only the default offline seed subject. When `LLM_PROVIDER` is set to `azure` or `groq` with valid credentials, the configured provider is used first to generate topic-specific concepts and questions. This includes the default Python topic too.
 
-If Groq fails, returns invalid JSON, or is unavailable, the app uses a safe generic fallback for learner-entered topics. That fallback still uses the learner's topic and does not reuse Python questions.
+If the LLM fails, returns invalid JSON, or is unavailable, the app uses a safe generic fallback for learner-entered topics. That fallback still uses the learner's topic and does not reuse Python questions.
 
 The subject generation flow is:
 
 1. User enters a subject.
 2. `ensureSubjectDomain()` checks whether concepts/questions already exist.
-3. If not, Groq generates a concept map and question bank.
+3. If not, the LLM generates a concept map and question bank.
 4. The app validates the generated JSON.
 5. Valid concepts and questions are stored in SQLite.
 6. Assessment starts from that generated domain.
@@ -147,7 +147,7 @@ Important files:
 
 The curriculum is not random. It tries to respect prerequisite order.
 
-For example, in a programming topic, the learner should understand variables before functions or debugging. In a generated subject, Groq can provide prerequisite IDs, and the app validates them.
+For example, in a programming topic, the learner should understand variables before functions or debugging. In a generated subject, the LLM can provide prerequisite IDs, and the app validates them.
 
 The curriculum validation checks for:
 
@@ -348,15 +348,28 @@ Key backend routes:
 - `GET /api/auth/me`: returns the signed-in learner
 - `POST /api/users/[userId]/reset`: resets learner data
 
-## Groq AI Integration
+## LLM Integration
 
-The app uses Groq for three main tasks:
+The app uses an LLM provider for three main tasks:
 
 1. Generating subject concepts and assessment questions.
 2. Generating lesson content.
 3. Generating Socratic tutor responses.
 
-Environment variables:
+Set `LLM_PROVIDER` to `azure`, `groq`, or leave it unset for offline fallback.
+
+### Azure AI Foundry
+
+```bash
+LLM_PROVIDER=azure
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+AZURE_OPENAI_API_KEY=your_key_here
+AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini
+```
+
+`AZURE_OPENAI_DEPLOYMENT` must match the deployment name you created in Foundry (not the raw model SKU).
+
+### Groq
 
 ```bash
 LLM_PROVIDER=groq
@@ -364,7 +377,7 @@ GROQ_API_KEY=your_key_here
 GROQ_MODEL=llama-3.1-8b-instant
 ```
 
-The Groq key should be kept in `.env.local`, which is ignored by Git.
+Copy `.env.example` to `.env.local` and fill in your credentials. `.env.local` is ignored by Git.
 
 The app uses:
 
@@ -436,7 +449,7 @@ The project includes tests for:
 - Socratic tutor not revealing answer too early
 - invalid AI JSON fallback
 - non-Python typed subjects getting their own domain
-- Groq replacing seeded Python assessment when enabled
+- LLM provider replacing seeded Python assessment when enabled
 
 This helps prove that the most important adaptive behavior is not just UI-level behavior. It is tested in the core logic.
 
@@ -445,7 +458,7 @@ This helps prove that the most important adaptive behavior is not just UI-level 
 - Uses SQLite persistence instead of temporary client state.
 - Separates AI generation from deterministic learning logic.
 - Validates AI-generated JSON before using it.
-- Has fallback behavior if Groq fails.
+- Has fallback behavior if the LLM fails.
 - Stores mastery evidence so updates are explainable.
 - Tracks confidence separately from mastery.
 - Prevents one answer from creating fake mastery.

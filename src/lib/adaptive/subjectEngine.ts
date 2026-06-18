@@ -1,5 +1,4 @@
-import { callGroqJson } from "@/lib/ai/provider";
-import { getAIProvider } from "@/lib/ai/provider";
+import { callLLMJson, getAIProvider } from "@/lib/ai/provider";
 import {
   DEFAULT_SUBJECT,
   assessmentQuestions as pythonQuestions,
@@ -876,7 +875,7 @@ function normalizeGeneratedConcepts(subject: string, value: unknown): Concept[] 
 }
 
 async function generateDomainInFocusedBatches(subject: string): Promise<SubjectDomain | undefined> {
-  const conceptRaw = await callGroqJson({
+  const conceptRaw = await callLLMJson({
     messages: [
       {
         role: "system",
@@ -916,7 +915,7 @@ Rules:
 
   const generatedQuestions: AssessmentQuestion[] = [];
   for (const concept of concepts) {
-    const questionRaw = await callGroqJson({
+    const questionRaw = await callLLMJson({
       messages: [
         {
           role: "system",
@@ -972,7 +971,7 @@ Rules:
   return validateGeneratedDomain(subject, { concepts, questions: generatedQuestions });
 }
 
-async function generateDomainWithGroq(subject: string): Promise<SubjectDomain | undefined> {
+async function generateDomainWithLLM(subject: string): Promise<SubjectDomain | undefined> {
   const prompt = `Create an adaptive assessment domain for this learner-selected topic: ${subject}
 
 Subject guidance: ${subjectGuidance(subject)}
@@ -1024,7 +1023,7 @@ Rules:
 - Use prerequisites only from generated concept ids.`;
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const raw = await callGroqJson({
+    const raw = await callLLMJson({
       messages: [
         {
           role: "system",
@@ -1061,14 +1060,14 @@ export async function ensureSubjectDomain(store: DataStore, subject: string) {
     existingConcepts.length >= 5 &&
     existingQuestions.length >= existingConcepts.length &&
     domainPassesQualityGate(existingConcepts, existingQuestions) &&
-    !(getAIProvider() === "groq" && isSeededPythonDomain)
+    !(getAIProvider() !== "fallback" && isSeededPythonDomain)
   ) {
     return { concepts: existingConcepts, questions: existingQuestions };
   }
 
   let domain: SubjectDomain | undefined;
   try {
-    domain = await generateDomainWithGroq(subject);
+    domain = await generateDomainWithLLM(subject);
   } catch (error) {
     console.warn(
       "Subject domain generation failed",
@@ -1086,9 +1085,9 @@ export async function ensureSubjectDomain(store: DataStore, subject: string) {
 
   if (!domain) {
     throw new Error(
-      getAIProvider() === "groq"
+      getAIProvider() !== "fallback"
         ? `Could not generate a high-quality factual assessment for ${subject}. Please try again.`
-        : `High-quality assessment generation for ${subject} requires Groq. Set LLM_PROVIDER=groq and GROQ_API_KEY, then try again.`
+        : `High-quality assessment generation for ${subject} requires an LLM provider. Set LLM_PROVIDER=azure or groq with credentials, then try again.`
     );
   }
 

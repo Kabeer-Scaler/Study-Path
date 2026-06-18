@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not start assessment.";
     if (
-      /Groq|rate limit|timeout|high-quality factual assessment|requires Groq/i.test(message)
+      /Azure|Groq|rate limit|timeout|high-quality factual assessment|requires an LLM provider/i.test(message)
     ) {
       return serviceUnavailable(message);
     }
