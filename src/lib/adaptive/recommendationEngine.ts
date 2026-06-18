@@ -1,4 +1,5 @@
 import { getCurriculumBundle } from "@/lib/adaptive/curriculumEngine";
+import { getMasteryRecordsForSubject } from "@/lib/adaptive/assessmentEngine";
 import type { DashboardData, DataStore, Lesson } from "@/lib/types";
 
 const completedStatuses = new Set(["completed", "mastered", "skipped"]);
@@ -6,6 +7,8 @@ const completedStatuses = new Set(["completed", "mastered", "skipped"]);
 export function getNextLesson(store: DataStore, userId: string): Lesson | undefined {
   const bundle = getCurriculumBundle(store, userId);
   if (!bundle) return undefined;
+
+  const user = store.users.find((item) => item.id === userId);
 
   const allLessons = bundle.modules.flatMap((module) => module.lessons);
   const latestQuiz = store.quizAttempts
@@ -23,9 +26,10 @@ export function getNextLesson(store: DataStore, userId: string): Lesson | undefi
   }
 
   const masteryMap = Object.fromEntries(
-    store.learnerMastery
-      .filter((item) => item.userId === userId)
-      .map((item) => [item.conceptId, item.masteryScore])
+    (user
+      ? getMasteryRecordsForSubject(store, userId, user.subject)
+      : store.learnerMastery.filter((item) => item.userId === userId)
+    ).map((item) => [item.conceptId, item.masteryScore])
   );
   const weakestConcept = Object.entries(masteryMap).sort(([, a], [, b]) => a - b)[0];
 
@@ -44,9 +48,17 @@ export function getNextLesson(store: DataStore, userId: string): Lesson | undefi
 
 export function buildDashboard(store: DataStore, userId: string): DashboardData {
   const bundle = getCurriculumBundle(store, userId);
-  const masteryRecords = store.learnerMastery.filter(
-    (item) => item.userId === userId
-  );
+  const user = store.users.find((item) => item.id === userId);
+  const masteryRecords = user
+    ? getMasteryRecordsForSubject(store, userId, user.subject)
+    : store.learnerMastery.filter((item) => item.userId === userId);
+  const subjectConceptIds = user
+    ? new Set(
+        store.concepts
+          .filter((concept) => concept.subject === user.subject)
+          .map((concept) => concept.id)
+      )
+    : new Set(masteryRecords.map((record) => record.conceptId));
   const mastery = Object.fromEntries(
     masteryRecords.map((item) => [item.conceptId, item.masteryScore])
   );
@@ -101,6 +113,7 @@ export function buildDashboard(store: DataStore, userId: string): DashboardData 
   const reviewDue = store.reviewSchedule
     .filter((review) => {
       if (review.userId !== userId || review.status === "completed") return false;
+      if (!subjectConceptIds.has(review.conceptId)) return false;
       if (review.status === "due") return true;
       return completedLessons >= review.dueAfterCompletedLessons;
     })
@@ -111,7 +124,9 @@ export function buildDashboard(store: DataStore, userId: string): DashboardData 
     .map((record) => conceptName(record.conceptId));
 
   const masteryEvidence = store.masteryEvidence
-    .filter((item) => item.userId === userId)
+    .filter(
+      (item) => item.userId === userId && subjectConceptIds.has(item.conceptId)
+    )
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 8);
 

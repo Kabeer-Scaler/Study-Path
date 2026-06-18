@@ -1,4 +1,4 @@
-import { ensureMasteryRecords } from "@/lib/adaptive/assessmentEngine";
+import { ensureMasteryRecords, pruneMasteryOutsideSubject } from "@/lib/adaptive/assessmentEngine";
 import { ensureSubjectDomain } from "@/lib/adaptive/subjectEngine";
 import { getAuthenticatedUser } from "@/lib/auth";
 import { DEFAULT_SUBJECT } from "@/lib/db/seed";
@@ -49,6 +49,7 @@ export async function POST(request: Request) {
         dailyTimeMinutes
       };
       await ensureSubjectDomain(store, profileUser.subject);
+      pruneMasteryOutsideSubject(store, profileUser.id, profileUser.subject);
       ensureMasteryRecords(store, profileUser);
       store.learningEvents.push({
         id: makeId("event"),

@@ -45,19 +45,49 @@ export function ensureMasteryRecords(store: DataStore, user: User) {
   }
 }
 
-export function getMasteryMap(store: DataStore, userId: string) {
-  return Object.fromEntries(
-    store.learnerMastery
-      .filter((item) => item.userId === userId)
-      .map((item) => [item.conceptId, item.masteryScore])
+function subjectConceptIds(store: DataStore, subject: string) {
+  return new Set(
+    store.concepts.filter((concept) => concept.subject === subject).map((concept) => concept.id)
   );
 }
 
-export function getConfidenceMap(store: DataStore, userId: string) {
+export function getMasteryRecordsForSubject(
+  store: DataStore,
+  userId: string,
+  subject: string
+): LearnerMastery[] {
+  const conceptIds = subjectConceptIds(store, subject);
+  return store.learnerMastery.filter(
+    (item) => item.userId === userId && conceptIds.has(item.conceptId)
+  );
+}
+
+export function pruneMasteryOutsideSubject(
+  store: DataStore,
+  userId: string,
+  subject: string
+) {
+  const conceptIds = subjectConceptIds(store, subject);
+  store.learnerMastery = store.learnerMastery.filter(
+    (item) => item.userId !== userId || conceptIds.has(item.conceptId)
+  );
+}
+
+export function getMasteryMap(store: DataStore, userId: string, subject: string) {
   return Object.fromEntries(
-    store.learnerMastery
-      .filter((item) => item.userId === userId)
-      .map((item) => [item.conceptId, item.confidence])
+    getMasteryRecordsForSubject(store, userId, subject).map((item) => [
+      item.conceptId,
+      item.masteryScore
+    ])
+  );
+}
+
+export function getConfidenceMap(store: DataStore, userId: string, subject: string) {
+  return Object.fromEntries(
+    getMasteryRecordsForSubject(store, userId, subject).map((item) => [
+      item.conceptId,
+      item.confidence
+    ])
   );
 }
 
@@ -180,8 +210,8 @@ export function chooseNextQuestion(store: DataStore, session: AssessmentSession)
   }
 
   const lastAnswer = answers.at(-1);
-  const mastery = getMasteryMap(store, session.userId);
-  const confidence = getConfidenceMap(store, session.userId);
+  const mastery = getMasteryMap(store, session.userId, session.subject);
+  const confidence = getConfidenceMap(store, session.userId, session.subject);
 
   if (lastAnswer && !lastAnswer.isCorrect) {
     const easierDifficulty = Math.max(1, lastAnswer.difficulty - 1) as Difficulty;

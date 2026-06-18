@@ -3,6 +3,7 @@ import { ArrowLeft, Gauge, Sparkles } from "lucide-react";
 import { GenerateCurriculumButton } from "@/components/GenerateCurriculumButton";
 import { MasteryChart } from "@/components/MasteryChart";
 import { findAuthenticatedUser, SESSION_COOKIE } from "@/lib/auth";
+import { getMasteryRecordsForSubject } from "@/lib/adaptive/assessmentEngine";
 import { readStore } from "@/lib/db/store";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -29,7 +30,7 @@ export default async function ResultsPage({
     );
   }
 
-  const masteryRecords = store.learnerMastery.filter((item) => item.userId === userId);
+  const masteryRecords = getMasteryRecordsForSubject(store, userId, user.subject);
   const mastery = Object.fromEntries(
     masteryRecords.map((item) => [item.conceptId, item.masteryScore])
   );

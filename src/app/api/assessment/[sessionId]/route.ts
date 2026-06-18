@@ -37,6 +37,6 @@ export async function GET(
     targetQuestionCount: 10,
     maxQuestionCount: 14,
     isComplete: session.status === "completed",
-    mastery: getMasteryMap(store, session.userId)
+    mastery: getMasteryMap(store, session.userId, session.subject)
   });
 }

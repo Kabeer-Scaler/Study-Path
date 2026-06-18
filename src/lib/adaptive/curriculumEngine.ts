@@ -1,5 +1,6 @@
 import { makeId, nowIso } from "@/lib/db/store";
 import { generateLesson } from "@/lib/ai/AIService";
+import { getMasteryRecordsForSubject } from "@/lib/adaptive/assessmentEngine";
 import { getSubjectConcepts } from "@/lib/adaptive/subjectEngine";
 import { validateCurriculumOrdering } from "@/lib/adaptive/validationEngine";
 import type {
@@ -59,9 +60,10 @@ function reasonFor(score: number, confidence: number, conceptName: string) {
 export function generateCurriculumForUser(store: DataStore, user: User) {
   const concepts = getSubjectConcepts(store, user.subject);
   const masteryRecords = Object.fromEntries(
-    store.learnerMastery
-      .filter((item) => item.userId === user.id)
-      .map((item) => [item.conceptId, item])
+    getMasteryRecordsForSubject(store, user.id, user.subject).map((item) => [
+      item.conceptId,
+      item
+    ])
   );
   const masteryMap = Object.fromEntries(
     Object.entries(masteryRecords).map(([conceptId, record]) => [
@@ -212,6 +214,7 @@ export function generateCurriculumForUser(store: DataStore, user: User) {
   const validation = validateCurriculumOrdering({
     store,
     userId: user.id,
+    subject: user.subject,
     modules: newModules,
     lessons: newLessons
   });

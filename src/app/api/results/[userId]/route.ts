@@ -1,3 +1,4 @@
+import { getMasteryRecordsForSubject } from "@/lib/adaptive/assessmentEngine";
 import { assertOwnsUser, getAuthenticatedUser } from "@/lib/auth";
 import { readStore } from "@/lib/db/store";
 import { fail, ok } from "@/lib/http";
@@ -18,9 +19,7 @@ export async function GET(
   const user = store.users.find((item) => item.id === userId);
   if (!user) return fail("User not found.", 404);
 
-  const masteryRecords = store.learnerMastery.filter(
-    (item) => item.userId === userId
-  );
+  const masteryRecords = getMasteryRecordsForSubject(store, userId, user.subject);
   const mastery = Object.fromEntries(
     masteryRecords.map((item) => [item.conceptId, item.masteryScore])
   );

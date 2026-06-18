@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       session.currentQuestionId = undefined;
       return {
         userId: session.userId,
-        mastery: getMasteryMap(store, session.userId)
+        mastery: getMasteryMap(store, session.userId, session.subject)
       };
     });
 

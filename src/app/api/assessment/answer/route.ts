@@ -46,7 +46,7 @@ export async function POST(request: Request) {
           explanation: "Assessment is already complete.",
           isComplete: true,
           userId: session.userId,
-          mastery: getMasteryMap(store, session.userId)
+          mastery: getMasteryMap(store, session.userId, session.subject)
         };
       }
 
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
         answeredCount: store.assessmentAnswers.filter(
           (answer) => answer.sessionId === session.id
         ).length,
-        mastery: getMasteryMap(store, session.userId)
+        mastery: getMasteryMap(store, session.userId, session.subject)
       };
     });
 

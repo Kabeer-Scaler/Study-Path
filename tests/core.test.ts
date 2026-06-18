@@ -7,6 +7,10 @@ import {
   updateLessonMastery
 } from "../src/lib/adaptive/masteryEngine";
 import {
+  getMasteryRecordsForSubject,
+  pruneMasteryOutsideSubject
+} from "../src/lib/adaptive/assessmentEngine";
+import {
   generateCurriculumForUser,
   getCurriculumBundle,
   insertRemedialLesson
@@ -192,6 +196,7 @@ test("curriculum prerequisites are ordered correctly", () => {
   const validation = validateCurriculumOrdering({
     store,
     userId: user.id,
+    subject: user.subject,
     modules: bundle.modules,
     lessons: bundle.modules.flatMap((module) => module.lessons)
   });
@@ -438,4 +443,88 @@ test("LLM provider replaces seeded Python assessment with generated domain", asy
   assert.ok(subjectConcepts.every((concept) => concept.id.startsWith("python_programming_fundamentals_")));
   assert.ok(subjectQuestions.every((question) => !assessmentQuestions.some((seeded) => seeded.id === question.id)));
   assertDifficultyLadder(store, DEFAULT_SUBJECT);
+});
+
+test("mastery reads are scoped to the learner's current subject", () => {
+  const store = emptyStore();
+  const devopsSubject = "DevOps";
+  store.concepts.push(
+    {
+      id: "devops-ci-cd",
+      subject: devopsSubject,
+      name: "CI/CD",
+      description: "Continuous integration and delivery.",
+      difficulty: 2,
+      prerequisites: []
+    },
+    {
+      id: "devops-iac",
+      subject: devopsSubject,
+      name: "Infrastructure as Code",
+      description: "Managing infrastructure declaratively.",
+      difficulty: 2,
+      prerequisites: ["devops-ci-cd"]
+    }
+  );
+
+  const user = addUser(store, "Scoped");
+  user.subject = devopsSubject;
+  store.learnerMastery.push(
+    {
+      id: "mastery_scoped_python_variables",
+      userId: user.id,
+      conceptId: "variables",
+      masteryScore: 0.32,
+      confidence: 0.7,
+      updatedAt: "2026-06-10T00:00:00.000Z"
+    },
+    {
+      id: "mastery_scoped_python_operators",
+      userId: user.id,
+      conceptId: "operators",
+      masteryScore: 0.32,
+      confidence: 0.7,
+      updatedAt: "2026-06-10T00:00:00.000Z"
+    },
+    {
+      id: "mastery_scoped_devops_ci",
+      userId: user.id,
+      conceptId: "devops-ci-cd",
+      masteryScore: 0.8,
+      confidence: 0.67,
+      updatedAt: "2026-06-10T00:00:00.000Z"
+    },
+    {
+      id: "mastery_scoped_devops_iac",
+      userId: user.id,
+      conceptId: "devops-iac",
+      masteryScore: 0.75,
+      confidence: 0.6,
+      updatedAt: "2026-06-10T00:00:00.000Z"
+    }
+  );
+
+  const scoped = getMasteryRecordsForSubject(store, user.id, devopsSubject);
+  assert.equal(scoped.length, 2);
+  assert.ok(scoped.every((record) => record.conceptId.startsWith("devops-")));
+  assert.ok(scoped.every((record) => !["variables", "operators"].includes(record.conceptId)));
+
+  generateCurriculumForUser(store, user);
+  const bundle = getCurriculumBundle(store, user.id);
+  const lessonConcepts = bundle?.modules.flatMap((module) =>
+    module.lessons.map((lesson) => lesson.conceptId)
+  );
+  assert.ok(lessonConcepts?.every((conceptId) => conceptId.startsWith("devops-")));
+
+  const dashboard = buildDashboard(store, user.id);
+  assert.ok(dashboard.weakAreas.every((name) => !/variables|operators/i.test(name)));
+  assert.ok(
+    dashboard.strongAreas.every((name) => !/variables|operators/i.test(name))
+  );
+
+  pruneMasteryOutsideSubject(store, user.id, devopsSubject);
+  assert.equal(
+    store.learnerMastery.filter((item) => item.userId === user.id).length,
+    2
+  );
 });

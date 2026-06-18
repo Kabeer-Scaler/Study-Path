@@ -1,3 +1,4 @@
+import { getMasteryRecordsForSubject } from "@/lib/adaptive/assessmentEngine";
 import type { Concept, DataStore, Lesson, LessonContent, Module } from "@/lib/types";
 
 const blockedPythonPatterns = [
@@ -65,11 +66,13 @@ export function validateLessonContent(
 export function validateCurriculumOrdering({
   store,
   userId,
+  subject,
   modules,
   lessons
 }: {
   store: DataStore;
   userId: string;
+  subject: string;
   modules: Module[];
   lessons: Lesson[];
 }) {
@@ -83,9 +86,10 @@ export function validateCurriculumOrdering({
   const seenConcepts = new Set<string>();
   const activeConcepts = new Map<string, Lesson>();
   const masteryRecords = Object.fromEntries(
-    store.learnerMastery
-      .filter((item) => item.userId === userId)
-      .map((item) => [item.conceptId, item])
+    getMasteryRecordsForSubject(store, userId, subject).map((item) => [
+      item.conceptId,
+      item
+    ])
   );
 
   for (const lesson of orderedLessons) {
