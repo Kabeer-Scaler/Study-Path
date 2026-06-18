@@ -2,8 +2,26 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, UserRound } from "lucide-react";
+import { ArrowRight, Sparkles, UserRound, BookOpen, Gauge, Clock, GraduationCap } from "lucide-react";
 import { DEFAULT_SUBJECT } from "@/lib/db/seed";
+import { Dropdown } from "@/components/Dropdown";
+import { AIGeneratingDots } from "@/components/AIGeneratingDots";
+
+const SUBJECT_OPTIONS = [
+  { value: "Python Programming Fundamentals", label: "Python Programming Fundamentals", description: "Syntax, data structures, idioms" },
+  { value: "JavaScript & Web Basics", label: "JavaScript & Web Basics", description: "JS, DOM, modern web" },
+  { value: "TypeScript Essentials", label: "TypeScript Essentials", description: "Types, generics, tooling" },
+  { value: "Data Structures & Algorithms", label: "Data Structures & Algorithms", description: "Big-O, classic patterns" },
+  { value: "SQL & Databases", label: "SQL & Databases", description: "Queries, joins, modeling" },
+  { value: "Machine Learning Foundations", label: "Machine Learning Foundations", description: "Core ML concepts & math" },
+  { value: "Deep Learning with PyTorch", label: "Deep Learning with PyTorch", description: "Neural nets, training loops" },
+  { value: "Linear Algebra", label: "Linear Algebra", description: "Vectors, matrices, spaces" },
+  { value: "Calculus Refresher", label: "Calculus Refresher", description: "Derivatives, integrals" },
+  { value: "Statistics & Probability", label: "Statistics & Probability", description: "Distributions, inference" },
+  { value: "System Design Basics", label: "System Design Basics", description: "Scaling, trade-offs" },
+  { value: "React & Frontend Engineering", label: "React & Frontend Engineering", description: "Components, hooks, state" },
+  { value: "__custom__", label: "Other / custom subject…", description: "Type your own subject" }
+];
 
 const initialForm = {
   subject: DEFAULT_SUBJECT,
@@ -13,12 +31,38 @@ const initialForm = {
   dailyTimeMinutes: 30
 };
 
+const LEVEL_OPTIONS = [
+  { value: "Absolute beginner", label: "Absolute beginner", description: "Brand new to the topic" },
+  { value: "Beginner", label: "Beginner", description: "Some exposure, building basics" },
+  { value: "Intermediate", label: "Intermediate", description: "Comfortable with fundamentals" },
+  { value: "Advanced", label: "Advanced", description: "Looking to deepen mastery" }
+];
+
+const STYLE_OPTIONS = [
+  { value: "Examples and practice", label: "Examples and practice", description: "Learn by doing" },
+  { value: "Code examples", label: "Code examples", description: "Read-and-run snippets" },
+  { value: "Practice first", label: "Practice first", description: "Try, then learn the theory" },
+  { value: "Theory first", label: "Theory first", description: "Concepts before practice" },
+  { value: "Visual analogies", label: "Visual analogies", description: "Pictures and metaphors" }
+];
+
+const TIME_OPTIONS = [
+  { value: "15", label: "15 minutes / day", description: "Quick daily touch" },
+  { value: "30", label: "30 minutes / day", description: "Balanced pace" },
+  { value: "45", label: "45 minutes / day", description: "Focused study" },
+  { value: "60", label: "60 minutes / day", description: "Deep work" },
+  { value: "90", label: "90 minutes / day", description: "Power session" }
+];
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [form, setForm] = useState(initialForm);
   const [learnerName, setLearnerName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const presetSubjects = SUBJECT_OPTIONS.map((option) => option.value);
+  const isCustomSubject = !presetSubjects.includes(form.subject);
+  const subjectDropdownValue = isCustomSubject ? "__custom__" : form.subject;
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -72,29 +116,51 @@ export default function OnboardingPage() {
   }
 
   return (
-    <main className="page-shell">
+    <main className="page-shell animate-fade-in">
       <div className="mx-auto max-w-4xl">
-        <div className="mb-6">
-          <p className="text-sm font-semibold text-teal-700">Learner onboarding</p>
-          <h1 className="mt-1 text-3xl font-bold text-slate-950">
-            {learnerName ? `Welcome, ${learnerName}` : "Build your personalised learning path"}
+        <div className="mb-8">
+          <span className="chip-accent">
+            <Sparkles size={14} aria-hidden /> Learner onboarding
+          </span>
+          <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
+            {learnerName ? (
+              <>
+                Welcome, <span className="text-gradient">{learnerName}</span>
+              </>
+            ) : (
+              <>Build your personalised learning path</>
+            )}
           </h1>
-          <p className="mt-2 text-slate-600">
+          <p className="mt-2 max-w-2xl text-muted">
             These preferences shape lesson tone, pacing, and the initial mastery estimate.
+            You can change them later.
           </p>
         </div>
 
-        <form className="panel p-5" onSubmit={submit}>
+        <form className="panel p-6 sm:p-7" onSubmit={submit}>
           <div className="grid gap-5 md:grid-cols-2">
-            <label>
-              <span className="field-label">Target subject</span>
-              <input
-                className="input-field"
-                value={form.subject}
-                onChange={(event) => update("subject", event.target.value)}
-                required
+            <div className="md:col-span-2">
+              <Dropdown
+                label="Target subject"
+                icon={<GraduationCap size={16} aria-hidden />}
+                options={SUBJECT_OPTIONS}
+                value={subjectDropdownValue}
+                onChange={(value) => update("subject", value === "__custom__" ? "" : value)}
               />
-            </label>
+              {isCustomSubject ? (
+                <label className="mt-3 block">
+                  <span className="field-label">Custom subject</span>
+                  <input
+                    className="input-field"
+                    value={form.subject}
+                    onChange={(event) => update("subject", event.target.value)}
+                    required
+                    autoFocus
+                    placeholder="e.g. Quantum computing, Music theory…"
+                  />
+                </label>
+              ) : null}
+            </div>
             <label className="md:col-span-2">
               <span className="field-label">Learning goal</span>
               <textarea
@@ -104,52 +170,48 @@ export default function OnboardingPage() {
                 required
               />
             </label>
-            <label>
-              <span className="field-label">Current self-rated level</span>
-              <select
-                className="input-field"
-                value={form.selfRatedLevel}
-                onChange={(event) => update("selfRatedLevel", event.target.value)}
-              >
-                <option>Absolute beginner</option>
-                <option>Beginner</option>
-                <option>Intermediate</option>
-                <option>Advanced</option>
-              </select>
-            </label>
-            <label>
-              <span className="field-label">Preferred learning style</span>
-              <select
-                className="input-field"
-                value={form.preferredStyle}
-                onChange={(event) => update("preferredStyle", event.target.value)}
-              >
-                <option>Examples and practice</option>
-                <option>Code examples</option>
-                <option>Practice first</option>
-                <option>Theory first</option>
-                <option>Visual analogies</option>
-              </select>
-            </label>
-            <label>
-              <span className="field-label">Daily available time</span>
-              <input
-                className="input-field"
-                type="number"
-                min={10}
-                max={120}
-                value={form.dailyTimeMinutes}
-                onChange={(event) => update("dailyTimeMinutes", Number(event.target.value))}
-              />
-            </label>
+
+            <Dropdown
+              label="Current self-rated level"
+              icon={<Gauge size={16} aria-hidden />}
+              options={LEVEL_OPTIONS}
+              value={form.selfRatedLevel}
+              onChange={(value) => update("selfRatedLevel", value)}
+            />
+            <Dropdown
+              label="Preferred learning style"
+              icon={<BookOpen size={16} aria-hidden />}
+              options={STYLE_OPTIONS}
+              value={form.preferredStyle}
+              onChange={(value) => update("preferredStyle", value)}
+            />
+            <Dropdown
+              label="Daily available time"
+              icon={<Clock size={16} aria-hidden />}
+              options={TIME_OPTIONS}
+              value={String(form.dailyTimeMinutes)}
+              onChange={(value) => update("dailyTimeMinutes", Number(value))}
+            />
+            <div className="hidden md:block" />
           </div>
 
           {error ? <p className="danger-note mt-5">{error}</p> : null}
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button className="primary-button" disabled={loading} type="submit">
+          <div className="mt-7 flex flex-wrap gap-3">
+            <button
+              className="accent-button relative overflow-hidden"
+              disabled={loading}
+              type="submit"
+            >
+              {loading ? (
+                <span className="pointer-events-none absolute inset-0 shimmer-bg" aria-hidden />
+              ) : null}
               <UserRound size={18} aria-hidden />
-              {loading ? "Starting..." : "Start Assessment"}
+              {loading ? (
+                <AIGeneratingDots label="calibrating your path" />
+              ) : (
+                "Start assessment"
+              )}
               <ArrowRight size={18} aria-hidden />
             </button>
           </div>

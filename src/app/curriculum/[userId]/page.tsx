@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, BookOpenCheck, LayoutDashboard } from "lucide-react";
+import { ArrowRight, BookOpenCheck, LayoutDashboard, Sparkles } from "lucide-react";
 import { CurriculumMap } from "@/components/CurriculumMap";
-import { StatusBadge } from "@/components/StatusBadge";
+import { CurriculumLessonList } from "@/components/CurriculumLessonList";
 import { getCurriculumBundle } from "@/lib/adaptive/curriculumEngine";
 import { findAuthenticatedUser, SESSION_COOKIE } from "@/lib/auth";
 import { readStore } from "@/lib/db/store";
@@ -34,10 +34,10 @@ export default async function CurriculumPage({
   if (!bundle) {
     return (
       <main className="page-shell">
-        <div className="panel p-6">
-          <h1 className="text-2xl font-bold">No curriculum found</h1>
-          <p className="mt-2 text-slate-600">Please complete the assessment first.</p>
-          <Link className="primary-button mt-5" href="/onboarding">
+        <div className="panel p-8 text-center">
+          <h1 className="text-2xl font-extrabold text-ink">No curriculum found</h1>
+          <p className="mt-2 text-muted">Please complete the assessment first.</p>
+          <Link className="accent-button mx-auto mt-5 inline-flex" href="/onboarding">
             Start assessment
           </Link>
         </div>
@@ -50,16 +50,16 @@ export default async function CurriculumPage({
     .find((lesson) => !["completed", "mastered", "skipped"].includes(lesson.status));
 
   return (
-    <main className="page-shell">
+    <main className="page-shell animate-fade-in">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-semibold text-teal-700">{user.subject}</p>
-          <h1 className="mt-1 text-3xl font-bold text-slate-950">
+          <span className="chip-accent">
+            <Sparkles size={14} aria-hidden /> {user.subject}
+          </span>
+          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
             {bundle.curriculum.title}
           </h1>
-          <p className="mt-2 max-w-3xl text-slate-600">
-            {bundle.curriculum.generatedReason}
-          </p>
+          <p className="mt-2 max-w-3xl text-muted">{bundle.curriculum.generatedReason}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link className="secondary-button" href={`/dashboard/${user.id}`}>
@@ -67,7 +67,7 @@ export default async function CurriculumPage({
             Dashboard
           </Link>
           {firstOpenLesson ? (
-            <Link className="primary-button" href={`/lesson/${firstOpenLesson.id}`}>
+            <Link className="accent-button" href={`/lesson/${firstOpenLesson.id}`}>
               Continue
               <ArrowRight size={18} aria-hidden />
             </Link>
@@ -76,41 +76,18 @@ export default async function CurriculumPage({
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <section className="panel p-5">
+        <section className="panel p-5 sm:p-6">
           <div className="flex items-center gap-2">
-            <BookOpenCheck size={22} className="text-teal-700" aria-hidden />
-            <h2 className="text-xl font-bold">Learning Path Map</h2>
+            <BookOpenCheck size={22} className="text-accent" aria-hidden />
+            <h2 className="text-xl font-bold text-ink">Learning path map</h2>
           </div>
           <div className="mt-5">
             <CurriculumMap modules={bundle.modules} />
           </div>
         </section>
 
-        <aside className="space-y-4">
-          {bundle.modules.map((module) => (
-            <section key={module.id} className="panel p-4">
-              <h2 className="font-bold text-slate-950">{module.title}</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{module.reason}</p>
-              <div className="mt-4 space-y-3">
-                {module.lessons.map((lesson) => (
-                  <div key={lesson.id} className="border-t border-slate-100 pt-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <Link
-                        className="font-semibold text-teal-800 hover:text-teal-950"
-                        href={`/lesson/${lesson.id}`}
-                      >
-                        {lesson.title}
-                      </Link>
-                      <StatusBadge status={lesson.status} />
-                    </div>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">
-                      Why this lesson? {lesson.whyAssigned}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))}
+        <aside>
+          <CurriculumLessonList modules={bundle.modules} />
         </aside>
       </div>
     </main>

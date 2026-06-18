@@ -1,12 +1,12 @@
 import type { LessonStatus } from "@/lib/types";
 
 const statusStyles: Record<LessonStatus, string> = {
-  not_started: "border-slate-200 bg-slate-50 text-slate-600",
-  in_progress: "border-indigo-200 bg-indigo-50 text-indigo-700",
-  completed: "border-teal-200 bg-teal-50 text-teal-800",
-  needs_review: "border-amber-200 bg-amber-50 text-amber-800",
-  skipped: "border-slate-200 bg-white text-slate-500",
-  mastered: "border-emerald-200 bg-emerald-50 text-emerald-800"
+  not_started: "border-line bg-surface-muted text-muted",
+  in_progress: "border-light-blue/60 bg-light-blue/25 text-ink",
+  completed: "border-icy-aqua/60 bg-icy-aqua/30 text-ink",
+  needs_review: "border-powder-blush/60 bg-powder-blush/25 text-ink",
+  skipped: "border-line bg-surface text-muted",
+  mastered: "border-icy-aqua/70 bg-icy-aqua/45 text-ink"
 };
 
 const labels: Record<LessonStatus, string> = {
@@ -21,7 +21,7 @@ const labels: Record<LessonStatus, string> = {
 export function StatusBadge({ status }: { status: LessonStatus }) {
   return (
     <span
-      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusStyles[status]}`}
+      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold transition ${statusStyles[status]}`}
     >
       {labels[status]}
     </span>

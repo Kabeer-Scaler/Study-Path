@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
+import { AIGeneratingDots } from "@/components/AIGeneratingDots";
 
 export function GenerateCurriculumButton({ userId }: { userId: string }) {
   const router = useRouter();
@@ -28,9 +29,22 @@ export function GenerateCurriculumButton({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-3">
-      <button className="primary-button" disabled={loading} onClick={generate}>
-        <Sparkles size={18} aria-hidden />
-        {loading ? "Generating path..." : "Generate curriculum"}
+      <button
+        className={`accent-button relative w-full overflow-hidden ${
+          loading ? "" : "animate-pulse-glow"
+        }`}
+        disabled={loading}
+        onClick={generate}
+      >
+        {loading ? (
+          <span className="pointer-events-none absolute inset-0 shimmer-bg" aria-hidden />
+        ) : null}
+        <Sparkles size={18} aria-hidden className={loading ? "animate-spin" : ""} />
+        {loading ? (
+          <AIGeneratingDots label="synthesizing your path" />
+        ) : (
+          "Generate curriculum"
+        )}
       </button>
       {error ? <p className="danger-note">{error}</p> : null}
     </div>

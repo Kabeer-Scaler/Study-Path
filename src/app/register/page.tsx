@@ -3,7 +3,10 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { UserPlus } from "lucide-react";
+import { Sparkles, UserPlus } from "lucide-react";
+import { AuroraBackground } from "@/components/AuroraBackground";
+import { NeuralOrbs } from "@/components/NeuralOrbs";
+import { AIGeneratingDots } from "@/components/AIGeneratingDots";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -36,64 +39,83 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="page-shell">
-      <div className="mx-auto max-w-xl">
-        <div className="mb-6">
-          <p className="text-sm font-semibold text-teal-700">Create account</p>
-          <h1 className="mt-1 text-3xl font-bold text-slate-950">
-            Register before starting
-          </h1>
-          <p className="mt-2 text-slate-600">
-            Your account keeps your assessment, curriculum, tutor chats, and progress separate.
-          </p>
-        </div>
-
-        <form className="panel p-5" onSubmit={submit}>
-          <div className="grid gap-5">
-            <label>
-              <span className="field-label">Name</span>
-              <input
-                className="input-field"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                required
-              />
-            </label>
-            <label>
-              <span className="field-label">Email</span>
-              <input
-                className="input-field"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-              />
-            </label>
-            <label>
-              <span className="field-label">Password</span>
-              <input
-                className="input-field"
-                type="password"
-                minLength={8}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
-            </label>
+    <main className="relative overflow-hidden">
+      <div className="absolute inset-0 hero-gradient -z-20" />
+      <AuroraBackground intensity="soft" />
+      <NeuralOrbs count={4} />
+      <div className="page-shell">
+        <div className="mx-auto max-w-md animate-scale-in">
+          <div className="mb-6 text-center">
+            <span className="chip-accent mx-auto">
+              <Sparkles size={14} aria-hidden /> Create account
+            </span>
+            <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-ink">
+              Start your learning journey
+            </h1>
+            <p className="mt-2 text-muted">
+              Your account keeps your assessment, curriculum, tutor chats, and progress separate.
+            </p>
           </div>
 
-          {error ? <p className="danger-note mt-5">{error}</p> : null}
+          <form className="panel panel-hover p-6 sm:p-7" onSubmit={submit}>
+            <div className="grid gap-5">
+              <label>
+                <span className="field-label">Name</span>
+                <input
+                  className="input-field"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                <span className="field-label">Email</span>
+                <input
+                  className="input-field"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  required
+                />
+              </label>
+              <label>
+                <span className="field-label">Password</span>
+                <input
+                  className="input-field"
+                  type="password"
+                  minLength={8}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                />
+                <span className="mt-1 block text-xs text-muted">
+                  At least 8 characters.
+                </span>
+              </label>
+            </div>
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button className="primary-button" disabled={loading} type="submit">
+            {error ? <p className="danger-note mt-5">{error}</p> : null}
+
+            <button
+              className="accent-button relative mt-6 w-full overflow-hidden"
+              disabled={loading}
+              type="submit"
+            >
+              {loading ? (
+                <span className="pointer-events-none absolute inset-0 shimmer-bg" aria-hidden />
+              ) : null}
               <UserPlus size={18} aria-hidden />
-              {loading ? "Creating..." : "Create account"}
+              {loading ? <AIGeneratingDots label="creating account" /> : "Create account"}
             </button>
-            <Link className="secondary-button" href="/login">
-              Already registered
-            </Link>
-          </div>
-        </form>
+
+            <p className="mt-5 text-center text-sm text-muted">
+              Already registered?{" "}
+              <Link className="font-semibold text-ink underline-offset-4 hover:underline" href="/login">
+                Sign in
+              </Link>
+            </p>
+          </form>
+        </div>
       </div>
     </main>
   );

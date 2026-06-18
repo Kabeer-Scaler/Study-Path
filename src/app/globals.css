@@ -2,32 +2,86 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/* Light theme (default) */
+:root,
+[data-theme="light"] {
   color-scheme: light;
-  --ink: #1f2933;
-  --muted: #60717f;
-  --line: #d9e1e4;
-  --paper: #ffffff;
-  --wash: #f5f8f7;
-  --teal: #0f9f8f;
-  --coral: #e25f4f;
-  --indigo: #4b5bdc;
-  --gold: #d8971f;
+  --c-bg: 250 243 221;
+  --c-surface: 255 255 255;
+  --c-surface-muted: 255 250 240;
+  --c-text: 60 64 78;
+  --c-muted-text: 110 117 132;
+  --c-accent: 255 166 158;
+  --c-accent-soft: 255 215 210;
+  --c-highlight: 184 242 230;
+  --c-highlight-soft: 216 247 238;
+  --c-secondary: 174 217 224;
+  --c-border: 231 222 207;
+  --c-ring: 255 166 158;
+  --aurora-1: 255 166 158;
+  --aurora-2: 184 242 230;
+  --aurora-3: 174 217 224;
+  --aurora-4: 255 215 210;
+  --orb-blend: screen;
+  --grad-page:
+    radial-gradient(at 20% -10%, rgba(255, 166, 158, 0.18), transparent 50%),
+    radial-gradient(at 90% 0%, rgba(184, 242, 230, 0.32), transparent 55%),
+    radial-gradient(at 50% 110%, rgba(174, 217, 224, 0.22), transparent 55%);
+}
+
+/*
+  Dark theme — tuned for WCAG AA+ contrast.
+  bg #1e212a (30 33 42)        contrast w/ text (#fbf5e3 ~ 251 245 227) ≈ 14.5:1 (AAA)
+  text 251 245 227 (vanilla)   muted 198 204 218 ≈ 9.4:1 vs bg (AAA)
+  surface 44 48 58, elevated 56 60 72
+  borders 90 96 110 (visible but quiet)
+  Accents slightly brightened for dark backgrounds.
+*/
+[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: 30 33 42;
+  --c-surface: 44 48 58;
+  --c-surface-muted: 56 60 72;
+  --c-text: 251 245 227;
+  --c-muted-text: 198 204 218;
+  --c-accent: 255 184 178;
+  --c-accent-soft: 122 73 68;
+  --c-highlight: 196 246 234;
+  --c-highlight-soft: 63 105 99;
+  --c-secondary: 184 224 232;
+  --c-border: 90 96 110;
+  --c-ring: 196 246 234;
+  --aurora-1: 255 138 128;
+  --aurora-2: 120 220 200;
+  --aurora-3: 130 180 220;
+  --aurora-4: 200 140 220;
+  --orb-blend: plus-lighter;
+  --grad-page:
+    radial-gradient(at 12% -5%, rgba(255, 138, 128, 0.18), transparent 55%),
+    radial-gradient(at 88% 5%, rgba(120, 220, 200, 0.16), transparent 55%),
+    radial-gradient(at 50% 100%, rgba(130, 180, 220, 0.14), transparent 60%),
+    radial-gradient(at 30% 70%, rgba(200, 140, 220, 0.10), transparent 60%);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html,
+body {
+  background-color: rgb(var(--c-bg));
+  color: rgb(var(--c-text));
+}
+
 body {
   margin: 0;
-  background:
-    linear-gradient(180deg, rgba(15, 159, 143, 0.08), transparent 280px),
-    var(--wash);
-  color: var(--ink);
+  background-image: var(--grad-page);
+  background-attachment: fixed;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
+  min-height: 100vh;
+  transition: background-color 0.35s ease, color 0.35s ease;
 }
 
 a {
@@ -40,46 +94,234 @@ input,
 select,
 textarea {
   font: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: rgb(var(--c-accent));
+  color: #1c1d22;
+}
+
+/* Scrollbar polish */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgb(var(--c-border));
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--c-accent));
 }
 
 @layer components {
   .page-shell {
-    @apply mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8;
+    @apply mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8;
   }
 
   .panel {
-    @apply rounded-lg border border-slate-200 bg-white shadow-soft;
+    @apply rounded-2xl border border-line bg-surface/95 shadow-soft backdrop-blur-sm;
+    transition:
+      border-color 0.25s ease,
+      box-shadow 0.25s ease,
+      transform 0.25s ease,
+      background-color 0.25s ease;
+  }
+
+  .panel-hover {
+    @apply hover:-translate-y-0.5 hover:border-accent/60 hover:shadow-glow;
   }
 
   .subtle-panel {
-    @apply rounded-lg border border-slate-200 bg-white/75;
+    @apply rounded-xl border border-line/70 bg-surface-muted/80;
+  }
+
+  .gradient-card {
+    @apply rounded-2xl border border-line p-5 shadow-soft;
+    background: linear-gradient(
+      135deg,
+      rgb(var(--c-surface)) 0%,
+      color-mix(in srgb, rgb(var(--c-highlight)) 22%, rgb(var(--c-surface))) 100%
+    );
   }
 
   .field-label {
-    @apply text-sm font-semibold text-slate-800;
+    @apply text-sm font-semibold text-ink;
   }
 
   .input-field {
-    @apply mt-2 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-teal-600 focus:ring-2 focus:ring-teal-100;
+    @apply mt-2 w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-muted focus:border-accent focus:ring-4 focus:ring-accent/20;
   }
 
   .primary-button {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-teal-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:bg-slate-300;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-slate px-5 py-2.5 text-sm font-semibold text-vanilla-cream shadow-soft transition hover:-translate-y-0.5 hover:bg-blue-slate/90 hover:shadow-glow active:translate-y-0 disabled:cursor-not-allowed disabled:bg-muted disabled:text-vanilla-cream/70;
+  }
+
+  .accent-button {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-powder-blush px-5 py-2.5 text-sm font-semibold text-blue-slate shadow-soft transition hover:-translate-y-0.5 hover:shadow-glow active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .secondary-button {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 transition hover:border-teal-600 hover:text-teal-800 disabled:cursor-not-allowed disabled:text-slate-400;
+    @apply inline-flex min-h-9 items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition hover:-translate-y-0.5 hover:border-accent hover:bg-surface-muted hover:text-ink active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60;
   }
 
+  .ghost-button {
+    @apply inline-flex min-h-9 items-center justify-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold text-ink/80 transition hover:bg-surface-muted hover:text-ink;
+  }
+
+  /* Notes — use accent-soft / highlight-soft so dark mode reads well */
   .danger-note {
-    @apply rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700;
+    @apply rounded-xl border border-accent/50 px-3.5 py-2.5 text-sm text-ink;
+    background: color-mix(in srgb, rgb(var(--c-accent)) 16%, rgb(var(--c-surface)));
   }
 
   .success-note {
-    @apply rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-sm text-teal-800;
+    @apply rounded-xl border border-highlight/60 px-3.5 py-2.5 text-sm text-ink;
+    background: color-mix(in srgb, rgb(var(--c-highlight)) 22%, rgb(var(--c-surface)));
+  }
+
+  .info-note {
+    @apply rounded-xl border border-secondary/60 px-3.5 py-2.5 text-sm text-ink;
+    background: color-mix(in srgb, rgb(var(--c-secondary)) 18%, rgb(var(--c-surface)));
   }
 
   .code-block {
-    @apply overflow-x-auto rounded-md border border-slate-800 bg-slate-950 p-4 text-sm leading-6 text-slate-100;
+    @apply overflow-x-auto rounded-xl border border-blue-slate/40 p-4 text-sm leading-6;
+    background: color-mix(in srgb, rgb(var(--c-text)) 8%, rgb(var(--c-surface-muted)));
+    color: rgb(var(--c-text));
+  }
+
+  [data-theme="dark"] .code-block {
+    background: #0f1218;
+    border-color: rgb(var(--c-border));
+    color: #e8edf6;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold;
+  }
+
+  .chip-accent {
+    @apply chip border-accent/55 text-ink;
+    background: color-mix(in srgb, rgb(var(--c-accent)) 22%, rgb(var(--c-surface)));
+  }
+  .chip-highlight {
+    @apply chip border-highlight/60 text-ink;
+    background: color-mix(in srgb, rgb(var(--c-highlight)) 28%, rgb(var(--c-surface)));
+  }
+  .chip-secondary {
+    @apply chip border-secondary/60 text-ink;
+    background: color-mix(in srgb, rgb(var(--c-secondary)) 24%, rgb(var(--c-surface)));
+  }
+  .chip-muted {
+    @apply chip border-line bg-surface-muted text-muted;
+  }
+
+  .hero-gradient {
+    background:
+      radial-gradient(at 10% 0%, rgba(var(--aurora-1), 0.32), transparent 50%),
+      radial-gradient(at 90% 20%, rgba(var(--aurora-2), 0.34), transparent 55%),
+      radial-gradient(at 50% 100%, rgba(var(--aurora-3), 0.26), transparent 60%),
+      rgb(var(--c-surface));
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(
+      120deg,
+      rgb(var(--c-accent)) 0%,
+      rgb(var(--c-text)) 45%,
+      rgb(var(--c-secondary)) 100%
+    );
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .text-gradient-animated {
+    background: linear-gradient(
+      120deg,
+      rgb(var(--c-accent)) 0%,
+      rgb(var(--c-highlight)) 35%,
+      rgb(var(--c-secondary)) 70%,
+      rgb(var(--c-accent)) 100%
+    );
+    background-size: 220% 220%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: gradient-shift 8s ease-in-out infinite;
+  }
+
+  .shimmer-text {
+    background: linear-gradient(
+      110deg,
+      rgb(var(--c-text)) 0%,
+      rgb(var(--c-text)) 35%,
+      rgb(var(--c-accent)) 50%,
+      rgb(var(--c-text)) 65%,
+      rgb(var(--c-text)) 100%
+    );
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer 4s linear infinite;
+  }
+
+  .glass {
+    background: color-mix(in srgb, rgb(var(--c-surface)) 75%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .ai-glow {
+    box-shadow:
+      0 0 0 1px rgba(var(--c-accent), 0.35),
+      0 0 24px -4px rgba(var(--c-accent), 0.45),
+      0 0 48px -8px rgba(var(--c-highlight), 0.35);
+  }
+
+  .ring-focus-ai:focus-within {
+    box-shadow:
+      0 0 0 4px rgba(var(--c-accent), 0.18),
+      0 0 24px -4px rgba(var(--c-accent), 0.35);
+  }
+
+  .orb {
+    mix-blend-mode: var(--orb-blend);
+    filter: blur(24px);
+    will-change: transform;
+  }
+
+  .shimmer-bg {
+    background: linear-gradient(
+      110deg,
+      transparent 0%,
+      rgba(var(--c-accent), 0.25) 45%,
+      rgba(var(--c-highlight), 0.25) 55%,
+      transparent 100%
+    );
+    background-size: 220% 100%;
+    animation: shimmer 2.4s linear infinite;
+  }
+
+  .progress-sweep::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.35),
+      transparent
+    );
+    animation: progress-sweep 2s ease-in-out infinite;
   }
 }

@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
 
 type PublicQuestion = {
   questionId: string;
@@ -106,79 +106,90 @@ export default function AssessmentPage() {
   if (loading && !question && !complete) {
     return (
       <main className="page-shell">
-        <div className="panel p-6">Loading assessment...</div>
+        <div className="panel p-6 animate-pulse">Loading assessment...</div>
       </main>
     );
   }
 
   return (
-    <main className="page-shell">
+    <main className="page-shell animate-fade-in">
       <div className="mx-auto max-w-4xl">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-teal-700">Adaptive intake assessment</p>
-            <h1 className="mt-1 text-3xl font-bold">Find your knowledge gaps</h1>
-            <p className="mt-2 text-slate-600">
+            <span className="chip-accent">
+              <Sparkles size={14} aria-hidden /> Adaptive intake assessment
+            </span>
+            <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-ink">
+              Find your knowledge gaps
+            </h1>
+            <p className="mt-2 text-muted">
               The next question changes based on your answer and current confidence.
             </p>
           </div>
-          <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600">
+          <div className="rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-semibold text-ink shadow-soft">
             {answeredCount}/10+ answered
           </div>
         </div>
 
-        <div className="mb-5 h-3 rounded-full bg-slate-100">
-          <div className="h-full rounded-full bg-teal-600" style={{ width: `${progress}%` }} />
+        <div className="mb-6 h-3 overflow-hidden rounded-full bg-surface-muted">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-powder-blush via-light-blue to-icy-aqua transition-all duration-500"
+            style={{ width: `${progress}%` }}
+          />
         </div>
 
         {error ? <p className="danger-note mb-4">{error}</p> : null}
 
         {complete ? (
-          <section className="panel p-6">
-            <CheckCircle2 size={34} className="text-teal-700" aria-hidden />
-            <h2 className="mt-4 text-2xl font-bold">Assessment complete</h2>
-            <p className="mt-2 text-slate-600">
+          <section className="panel p-8 text-center animate-scale-in">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-icy-aqua/40">
+              <CheckCircle2 size={32} className="text-blue-slate" aria-hidden />
+            </div>
+            <h2 className="mt-4 text-2xl font-extrabold text-ink">Assessment complete</h2>
+            <p className="mt-2 text-muted">
               Your concept-level mastery scores are ready.
             </p>
-            <Link className="primary-button mt-5" href={`/results/${userId}`}>
+            <Link className="accent-button mx-auto mt-6 inline-flex" href={`/results/${userId}`}>
               View results
               <ArrowRight size={18} aria-hidden />
             </Link>
           </section>
         ) : question ? (
-          <form className="panel p-6" onSubmit={submit}>
+          <form className="panel p-6 sm:p-7 animate-fade-in" onSubmit={submit}>
             <div className="flex flex-wrap gap-2">
-              <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-800">
-                {question.conceptId}
-              </span>
-              <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-800">
-                difficulty {question.difficulty}
-              </span>
-              <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
-                {question.type.replace("_", " ")}
-              </span>
+              <span className="chip-accent">{question.conceptId}</span>
+              <span className="chip-secondary">difficulty {question.difficulty}</span>
+              <span className="chip-highlight">{question.type.replace("_", " ")}</span>
             </div>
-            <pre className="mt-5 whitespace-pre-wrap rounded-md bg-slate-50 p-4 text-lg font-semibold leading-8 text-slate-950">
+            <pre className="mt-5 whitespace-pre-wrap rounded-xl border border-line bg-surface-muted p-4 text-lg font-semibold leading-8 text-ink">
               {question.question}
             </pre>
             {question.options?.length ? (
               <div className="mt-5 grid gap-3">
-                {question.options.map((option) => (
-                  <label
-                    key={option}
-                    className="flex cursor-pointer items-center gap-3 rounded-md border border-slate-200 bg-white px-3 py-3 hover:border-teal-500"
-                  >
-                    <input
-                      type="radio"
-                      name="answer"
-                      value={option}
-                      checked={answer === option}
-                      onChange={(event) => setAnswer(event.target.value)}
-                      disabled={Boolean(feedback)}
-                    />
-                    <span>{option}</span>
-                  </label>
-                ))}
+                {question.options.map((option) => {
+                  const checked = answer === option;
+                  return (
+                    <label
+                      key={option}
+                      className={`flex cursor-pointer items-center gap-3 rounded-xl border bg-surface px-3.5 py-3 text-sm transition hover:-translate-y-0.5 hover:border-accent hover:shadow-glow ${
+                        checked
+                          ? "border-accent bg-accent/10 shadow-soft"
+                          : "border-line"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="answer"
+                        value={option}
+                        checked={checked}
+                        onChange={(event) => setAnswer(event.target.value)}
+                        disabled={Boolean(feedback)}
+                        className="accent-powder-blush"
+                      />
+                      <span>{option}</span>
+                    </label>
+                  );
+                })}
               </div>
             ) : (
               <label className="mt-5 block">
@@ -193,18 +204,18 @@ export default function AssessmentPage() {
               </label>
             )}
             {feedback ? (
-              <div className={`mt-5 ${feedback.isCorrect ? "success-note" : "danger-note"}`}>
+              <div className={`mt-5 ${feedback.isCorrect ? "success-note" : "danger-note"} animate-fade-in`}>
                 <p className="font-semibold">{feedback.feedback}</p>
                 <p className="mt-1">{feedback.explanation}</p>
               </div>
             ) : null}
             {feedback ? (
-              <button className="primary-button mt-6" type="button" onClick={moveNext}>
+              <button className="accent-button mt-6" type="button" onClick={moveNext}>
                 {pendingComplete ? "Finish assessment" : "Next question"}
                 <ArrowRight size={18} aria-hidden />
               </button>
             ) : (
-              <button className="primary-button mt-6" disabled={loading} type="submit">
+              <button className="accent-button mt-6" disabled={loading} type="submit">
                 {loading ? "Checking..." : "Submit answer"}
                 <ArrowRight size={18} aria-hidden />
               </button>
